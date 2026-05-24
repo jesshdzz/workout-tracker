@@ -1,7 +1,7 @@
 // app/repositories/routines.repository.ts
 import { supabase } from '~/lib/supabase'
 import { BaseRepository } from './base.repository'
-import type { Result } from '~/core/types/common.types'
+import { AppServiceError, type Result } from '~/core/types/common.types'
 import type { Database } from '~/core/types/database.types'
 
 type Routine = Database['public']['Tables']['routines']['Row']
@@ -38,7 +38,21 @@ export class RoutinesRepository extends BaseRepository {
         )
       `)
       .eq('id', id)
-      .single()
+      .maybeSingle()
+
+    if (error) return { data: null, error }
+
+    if (!data) {
+      return {
+        data: null,
+        error: new AppServiceError(
+          `Rutina con id ${id} no encontrada`,
+          'ROUTINE_NOT_FOUND'
+        ) as any,
+      }
+    }
+
+    return { data, error: null }
     return this.handle(data, error)
   }
 

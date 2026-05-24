@@ -1,6 +1,6 @@
 import { supabase } from '~/lib/supabase'
 import { BaseRepository } from './base.repository'
-import type { Result } from '~/core/types/common.types'
+import { AppServiceError, type Result } from '~/core/types/common.types'
 import type { Database } from '~/core/types/database.types'
 
 type Exercise = Database['public']['Tables']['exercises']['Row']
@@ -31,7 +31,21 @@ export class ExercisesRepository extends BaseRepository {
         )
       `)
       .eq('slug', slug)
-      .single()
+      .maybeSingle()
+
+    if (error) return { data: null, error }
+
+    if (!data) {
+      return {
+        data: null,
+        error: new AppServiceError(
+          `Ejercicio con slug ${slug} no encontrado`,
+          'EXERCISE_NOT_FOUND'
+        ) as any,
+      }
+    }
+
+    return { data, error: null }
     return this.handle(data, error)
   }
 

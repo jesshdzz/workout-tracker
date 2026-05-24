@@ -22,7 +22,7 @@ export class RMsRepository extends BaseRepository {
       .select('*')
       .eq('user_id', userId)
       .eq('exercise_id', exerciseId)
-      .single()
+      .maybeSingle()
     return this.handle(data, error)
   }
 

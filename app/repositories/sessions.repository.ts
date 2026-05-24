@@ -1,7 +1,7 @@
 // app/repositories/sessions.repository.ts
 import { supabase } from '~/lib/supabase'
 import { BaseRepository } from './base.repository'
-import type { Result } from '~/core/types/common.types'
+import { AppServiceError, type Result } from '~/core/types/common.types'
 import type { Database } from '~/core/types/database.types'
 
 type Session = Database['public']['Tables']['sessions']['Row']
@@ -34,8 +34,21 @@ export class SessionsRepository extends BaseRepository {
         )
       `)
       .eq('id', id)
-      .single()
-    return this.handle(data, error)
+      .maybeSingle()
+
+    if (error) return { data: null, error }
+
+    if (!data) {
+      return {
+        data: null,
+        error: new AppServiceError(
+          `Sesión con id ${id} no encontrada`,
+          'SESSION_NOT_FOUND'
+        ) as any,
+      }
+    }
+
+    return { data, error: null }
   }
 
   async findActive(userId: string): Promise<Result<Session | null>> {
