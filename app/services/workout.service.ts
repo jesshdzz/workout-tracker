@@ -115,8 +115,8 @@ export const workoutService = {
     }
   },
 
-  async finishSession(sessionId: string): Promise<Result<Session>> {
-    return sessionsRepository.complete(sessionId)
+  async finishSession(sessionId: string, durationSeconds?: number): Promise<Result<Session>> {
+    return sessionsRepository.complete(sessionId, durationSeconds)
   },
 
   async getActiveSession(userId: string): Promise<Result<Session | null>> {
