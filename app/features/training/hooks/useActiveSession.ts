@@ -97,9 +97,8 @@ export function useActiveSession() {
 
   const finishSession = async () => {
     if (!sessionId) return
-    await workoutService.finishSession(sessionId)
+    await workoutService.finishSession(sessionId, elapsedSeconds)
     if (elapsedRef.current) clearInterval(elapsedRef.current)
-    reset()
   }
 
   const setsForExercise = (exerciseId: string) =>
