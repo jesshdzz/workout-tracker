@@ -11,7 +11,7 @@ type Props = {
 
 export function WeekCard({ activeSession }: Props) {
   return (
-    <div className="p-4 space-y-4 rounded-2xl bg-card shadow-sm border border-border">
+    <div className="p-4 space-y-4 border shadow-sm rounded-2xl bg-card border-border">
       <div className="flex items-center gap-2">
         <Dumbbell size={16} className="text-primary" />
         <p className="text-sm font-medium text-foreground">Sesión de hoy</p>
@@ -34,12 +34,12 @@ export function WeekCard({ activeSession }: Props) {
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="mb-2 text-sm text-muted-foreground">
             No hay sesión activa. ¿Listo para entrenar?
           </p>
           <Link to="/app/training">
             <Button className="w-full">
-              Iniciar sesión
+              Iniciar entreno
               <ChevronRight size={16} />
             </Button>
           </Link>
