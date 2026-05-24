@@ -3,8 +3,8 @@ import type { Route } from './+types/auth.register'
 import { requireGuest } from '~/lib/auth.server'
 import { RegisterForm } from '~/features/auth/components/RegisterForm'
 
-export async function loader() {
-  await requireGuest()
+export async function loader({ request }: Route.LoaderArgs) {
+  await requireGuest(request)
   return {}
 }
 

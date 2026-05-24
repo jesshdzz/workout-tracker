@@ -1,13 +1,15 @@
 import { redirect } from 'react-router'
-import { authService } from '~/services/auth.service'
+import { createServerSupabase } from './supabase.server'
 
-export async function requireAuth() {
-  const { data: user } = await authService.getUser()
+export async function requireAuth(request: Request) {
+  const { supabase } = createServerSupabase(request)
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw redirect('/auth/login')
   return user
 }
 
-export async function requireGuest() {
-  const { data: user } = await authService.getUser()
+export async function requireGuest(request: Request) {
+  const { supabase } = createServerSupabase(request)
+  const { data: { user } } = await supabase.auth.getUser()
   if (user) throw redirect('/app')
 }

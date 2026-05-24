@@ -4,7 +4,7 @@ import { requireAuth } from '~/lib/auth.server'
 import { BottomNav } from '~/shared/components/BottomNav'
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const user = await requireAuth()
+  const user = await requireAuth(request)
   return { user }
 }
 
