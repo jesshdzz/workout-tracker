@@ -1,4 +1,3 @@
-// app/features/auth/components/LoginForm.tsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { authService } from '~/services/auth.service'
