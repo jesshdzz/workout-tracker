@@ -1,6 +1,13 @@
 import type { PostgrestError, AuthError } from '@supabase/supabase-js'
 
-export type AppError = PostgrestError | AuthError
+export class AppServiceError extends Error {
+  constructor(message: string, public code: string) {
+    super(message)
+    this.name = 'AppServiceError'
+  }
+}
+
+export type AppError = PostgrestError | AuthError | AppServiceError
 
 export type Result<T, E = AppError> =
   | { data: T; error: null }
