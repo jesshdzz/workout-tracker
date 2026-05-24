@@ -19,7 +19,7 @@ export function WeekCard({ activeSession }: Props) {
 
       {activeSession ? (
         <div className="space-y-3">
-          <div className="px-3 py-2 border rounded-lg bg-primary/10 border-primary/20">
+          <div className="px-3 py-2 mb-2 border rounded-xl border-primary/20 bg-primary/10">
             <p className="text-xs font-medium text-primary">Sesión en progreso</p>
             <p className="text-sm text-foreground mt-0.5">
               {activeSession.name ?? 'Sesión sin nombre'}

@@ -52,25 +52,25 @@ export function ExerciseCard({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-surface">
+    <div className="overflow-hidden rounded-2xl bg-card shadow-sm border border-border">
       {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex items-center justify-between w-full px-4 py-4"
       >
         <div className="text-left">
-          <p className="font-medium text-white">
+          <p className="font-medium text-foreground">
             {exercise.name_es ?? exercise.name}
           </p>
-          <p className="text-xs text-muted mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {completedSets.length} / {targetSets} series
             {allDone && ' · ✅ Completado'}
           </p>
         </div>
         {expanded ? (
-          <ChevronUp size={16} className="text-muted" />
+          <ChevronUp size={16} className="text-muted-foreground" />
         ) : (
-          <ChevronDown size={16} className="text-muted" />
+          <ChevronDown size={16} className="text-muted-foreground" />
         )}
       </button>
 
@@ -78,9 +78,9 @@ export function ExerciseCard({
         <div className="px-4 pb-4 space-y-3">
           {/* Técnica */}
           {exercise.technique_notes && (
-            <div className="flex gap-2 px-3 py-2 rounded-lg bg-bg">
-              <Info size={12} className="text-secondary mt-0.5 shrink-0" />
-              <p className="text-xs text-muted">{exercise.technique_notes}</p>
+            <div className="flex gap-2 px-3 py-2 rounded-lg bg-muted">
+              <Info size={12} className="text-primary mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground">{exercise.technique_notes}</p>
             </div>
           )}
 
@@ -88,15 +88,15 @@ export function ExerciseCard({
           {completedSets.map((s) => (
             <div
               key={`${s.exerciseId}-${s.setNumber}`}
-              className={`rounded-xl p-3 ${s.isPR ? 'bg-primary/10 border border-primary/20' : 'bg-bg'}`}
+              className={`rounded-xl p-3 ${s.isPR ? 'bg-primary/10 border border-primary/20' : 'bg-muted'}`}
             >
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted">
+                <p className="text-xs text-muted-foreground">
                   Serie {s.setNumber} · {s.setType === 'warmup' ? 'Calentamiento' : 'Efectiva'}
                 </p>
                 {s.isPR && <span className="text-xs font-bold text-primary">🏆 PR</span>}
               </div>
-              <p className="text-white text-sm font-medium mt-0.5">
+              <p className="text-foreground text-sm font-medium mt-0.5">
                 {s.weightKg} {s.weightUnit} × {s.reps} reps · RIR {s.rirPerceived}
               </p>
             </div>
