@@ -58,11 +58,11 @@ export function SessionSummary({ sets, elapsedSeconds, onFinish }: Props) {
                 <div className="w-full space-y-3">
                     <Button
                         onClick={onFinish}
-                        className="w-full h-12 font-medium text-white bg-primary hover:bg-primary/90"
+                        className="w-full h-12 font-medium"
                     >
                         Guardar y salir
                     </Button>
-                    <Link to="/app" className="block text-sm text-center transition-colors text-muted hover:text-white">
+                    <Link to="/app" className="block text-sm text-center transition-colors text-muted-foreground hover:text-foreground">
                         Ir al dashboard
                     </Link>
                 </div>
