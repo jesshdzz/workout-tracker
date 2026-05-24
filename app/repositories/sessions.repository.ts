@@ -59,10 +59,10 @@ export class SessionsRepository extends BaseRepository {
     return this.handle(data, error)
   }
 
-  async complete(id: string): Promise<Result<Session>> {
+  async complete(id: string, durationSeconds?: number): Promise<Result<Session>> {
     const { data, error } = await supabase
       .from('sessions')
-      .update({ completed: true })
+      .update({ completed: true, duration_s: durationSeconds ?? null })
       .eq('id', id)
       .select()
       .single()
