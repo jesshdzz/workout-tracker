@@ -14,6 +14,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const user = await requireAuth(request)
   const result = await sessionsRepository.findById(params.sessionId ?? '')
 
+  console.log(result)
+
   if (result.error || !result.data) {
     throw new Response('Sesión no encontrada', { status: 404 })
   }
@@ -34,11 +36,11 @@ export default function SessionDetailRoute({ loaderData }: Route.ComponentProps)
 
   return (
     <div className="px-4 py-6 space-y-4">
-      <Link to="/app" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+      <Link to="/app" className="text-xs transition-colors text-muted-foreground hover:text-foreground">
         ← Volver al dashboard
       </Link>
 
-      <div className="p-4 space-y-3 rounded-2xl bg-card shadow-sm border border-border">
+      <div className="p-4 space-y-3 border shadow-sm rounded-2xl bg-card border-border">
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-lg font-bold text-foreground">
@@ -50,12 +52,12 @@ export default function SessionDetailRoute({ loaderData }: Route.ComponentProps)
             </p>
           </div>
           {session.completed ? (
-            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-primary/10 text-primary border border-primary/20">
+            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium border rounded-lg bg-primary/10 text-primary border-primary/20">
               <CheckCircle2 size={12} />
               Completada
             </span>
           ) : (
-            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
+            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium border rounded-lg bg-destructive/10 text-destructive border-destructive/20">
               En progreso
             </span>
           )}
@@ -80,7 +82,7 @@ export default function SessionDetailRoute({ loaderData }: Route.ComponentProps)
       </div>
 
       {sets.length === 0 ? (
-        <div className="p-8 text-center rounded-2xl bg-card border border-border">
+        <div className="p-8 text-center border rounded-2xl bg-card border-border">
           <p className="text-sm text-muted-foreground">Esta sesión no tiene series registradas</p>
         </div>
       ) : (
@@ -88,7 +90,7 @@ export default function SessionDetailRoute({ loaderData }: Route.ComponentProps)
           {Array.from(grouped.entries()).map(([exerciseName, exerciseSets]) => {
             const hasPR = exerciseSets.some(s => s.is_pr)
             return (
-              <div key={exerciseName} className="overflow-hidden rounded-2xl bg-card shadow-sm border border-border">
+              <div key={exerciseName} className="overflow-hidden border shadow-sm rounded-2xl bg-card border-border">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
                   <p className="text-sm font-medium text-foreground">{exerciseName}</p>
                   {hasPR && <Trophy size={14} className="text-primary" />}
