@@ -152,6 +152,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "personal_records_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "personal_records_set_id_fkey"
             columns: ["set_id"]
             isOneToOne: false
@@ -202,6 +209,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "personal_rms_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "personal_rms_user_id_fkey"
             columns: ["user_id"]
@@ -443,6 +457,13 @@ export type Database = {
           weight_unit?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sets_session_id_fkey"
             columns: ["session_id"]
