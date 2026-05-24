@@ -32,7 +32,7 @@ export function RecentSessions({ sessions }: Props) {
                   {session.name ?? 'Sesión sin nombre'}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {formatRelative(session.date)}
+                  {formatRelative(session.created_at ?? session.date)}
                   {session.week_number ? ` · Semana ${session.week_number}` : ''}
                 </p>
               </div>
