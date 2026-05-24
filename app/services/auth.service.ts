@@ -60,3 +60,13 @@ export const authService = {
     })
   }
 }
+
+export const authErrorMessages: Record<string, string> = {
+  'email_address_invalid': 'Correo electrónico inválido',
+  'email_exists': 'Este correo ya está registrado',
+  'user_already_exists': 'Este usuario ya existe',
+  'too_many_requests': 'Demasiados intentos. Intenta de nuevo más tarde.',
+  'invalid_credentials': 'Correo o contraseña incorrectos',
+  // 'email_not_confirmed': 'Correo no confirmado. Revisa tu bandeja de entrada.',
+  'default': 'Ocurrió un error. Intenta de nuevo.'
+}

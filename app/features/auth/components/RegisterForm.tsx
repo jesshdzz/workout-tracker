@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { authService } from '~/services/auth.service'
+import { authService, authErrorMessages } from '~/services/auth.service'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 
@@ -38,11 +38,8 @@ export function RegisterForm() {
     const result = await authService.signUp(form.email, form.password, form.username)
 
     if (result.error) {
-      setError(
-        result.error.message.includes('already registered')
-          ? 'Este correo ya está registrado'
-          : 'Error al crear la cuenta. Intenta de nuevo.'
-      )
+      const message = authErrorMessages[result.error.code ?? 'default']
+      setError(message)
       setLoading(false)
       return
     }

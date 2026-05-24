@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { authService } from '~/services/auth.service'
+import { authService, authErrorMessages } from '~/services/auth.service'
 import { Button } from '~/components/ui/button'
 import { Input } from '~/components/ui/input'
 
@@ -18,10 +18,13 @@ export function LoginForm() {
         const result = await authService.signIn(email, password)
 
         if (result.error) {
-            setError('Correo o contraseña incorrectos')
+            const message = authErrorMessages[result.error.code ?? 'default']
+            setError(message)
             setLoading(false)
             return
         }
+
+        console.log(result)
 
         navigate('/app')
     }
