@@ -50,12 +50,12 @@ export function RegisterForm() {
   const isDisabled = loading || !form.email || !form.password || !form.username
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 bg-bg">
+    <div className="flex items-center justify-center min-h-screen px-4 bg-background">
       <div className="w-full max-w-sm space-y-6">
 
         <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-bold text-white">Crear cuenta</h1>
-          <p className="text-sm text-muted">Empieza a trackear tu progreso</p>
+          <h1 className="text-2xl font-bold text-foreground">Crear cuenta</h1>
+          <p className="text-sm text-muted-foreground">Empieza a trackear tu progreso</p>
         </div>
 
         <div className="space-y-3">
@@ -63,46 +63,42 @@ export function RegisterForm() {
             placeholder="Nombre de usuario"
             value={form.username}
             onChange={update('username')}
-            className="text-white border-none bg-surface placeholder:text-muted"
           />
           <Input
             type="email"
             placeholder="Correo electrónico"
             value={form.email}
             onChange={update('email')}
-            className="text-white border-none bg-surface placeholder:text-muted"
           />
           <Input
             type="password"
             placeholder="Contraseña"
             value={form.password}
             onChange={update('password')}
-            className="text-white border-none bg-surface placeholder:text-muted"
           />
           <Input
             type="password"
             placeholder="Confirmar contraseña"
             value={form.confirm}
             onChange={update('confirm')}
-            className="text-white border-none bg-surface placeholder:text-muted"
           />
         </div>
 
         {error && (
-          <p className="text-sm text-center text-danger">{error}</p>
+          <p className="text-sm text-center text-destructive">{error}</p>
         )}
 
         <Button
           onClick={handleSubmit}
           disabled={isDisabled}
-          className="w-full font-medium text-white bg-primary hover:bg-primary/90"
+          className="w-full font-medium"
         >
           {loading ? 'Creando cuenta...' : 'Registrarse'}
         </Button>
 
-        <p className="text-sm text-center text-muted">
+        <p className="text-sm text-center text-muted-foreground">
           ¿Ya tienes cuenta?{' '}
-          <a href="/auth/login" className="text-secondary hover:underline">
+          <a href="/auth/login" className="text-primary hover:underline">
             Inicia sesión
           </a>
         </p>

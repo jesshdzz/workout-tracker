@@ -1,4 +1,3 @@
-// app/routes/app._index.tsx
 import type { Route } from './+types/app._index'
 import { requireAuth } from '~/lib/auth.server'
 import { useDashboard } from '~/features/dashboard/hooks/useDashboard'
@@ -26,7 +25,7 @@ export default function DashboardRoute({ loaderData }: Route.ComponentProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-bg">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="w-6 h-6 border-2 rounded-full animate-spin border-primary border-t-transparent" />
       </div>
     )
@@ -34,17 +33,17 @@ export default function DashboardRoute({ loaderData }: Route.ComponentProps) {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen px-4 bg-bg">
-        <p className="text-sm text-center text-danger">{error}</p>
+      <div className="flex items-center justify-center min-h-screen px-4 bg-background">
+        <p className="text-sm text-center text-destructive">{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 space-y-4 bg-bg">
+    <div className="px-4 py-6 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <p className="text-sm text-muted mt-0.5">Bienvenido de vuelta</p>
+        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Bienvenido de vuelta</p>
       </div>
 
       <BlockProgress currentWeek={currentWeek} />
