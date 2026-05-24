@@ -1,8 +1,10 @@
-import type { PostgrestError } from '@supabase/supabase-js'
+import type { PostgrestError, AuthError } from '@supabase/supabase-js'
 
-export type Result<T> =
+export type AppError = PostgrestError | AuthError
+
+export type Result<T, E = AppError> =
   | { data: T; error: null }
-  | { data: null; error: PostgrestError }
+  | { data: null; error: E }
 
 export type WeightUnit = 'kg' | 'lb'
 export type SetType = 'warmup' | 'effective'
