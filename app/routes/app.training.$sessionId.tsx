@@ -1,44 +1,36 @@
-import { redirect } from 'react-router'
-import { createServerSupabase } from '~/lib/supabase.server'
+import type { Route } from './+types/app.training.$sessionId'
+import { requireAuth } from '~/lib/auth.server'
+import { sessionsRepository } from '~/repositories/sessions.repository'
 import { formatDate, formatDuration } from '~/core/utils/formatters'
-import { Clock, Trophy, CheckCircle2, Dumbbell } from 'lucide-react'
 import { Link } from 'react-router'
+import { Clock, Trophy, CheckCircle2, Dumbbell } from 'lucide-react'
 import type { Database } from '~/core/types/database.types'
 
-type Session = Database['public']['Tables']['sessions']['Row']
+type SetRow = Database['public']['Tables']['sets']['Row'] & {
+  exercises: Pick<Database['public']['Tables']['exercises']['Row'], 'id' | 'name' | 'name_es' | 'slug'> | null
+}
 
-export async function loader({ request, params }: { request: Request; params: Record<string, string | undefined> }) {
-  const { supabase } = createServerSupabase(request)
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw redirect('/auth/login')
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const user = await requireAuth(request)
+  const result = await sessionsRepository.findById(params.sessionId ?? '')
 
-  const { data: session, error } = await supabase
-    .from('sessions')
-    .select(`
-      *,
-      routines(id, name),
-      sets(
-        *,
-        exercises(id, name, name_es, slug)
-      )
-    `)
-    .eq('id', params.sessionId ?? '')
-    .eq('user_id', user.id)
-    .single()
-
-  if (error || !session) {
+  if (result.error || !result.data) {
     throw new Response('Sesión no encontrada', { status: 404 })
   }
 
-  return { session }
+  if (result.data.user_id !== user.id) {
+    throw new Response('No autorizado', { status: 403 })
+  }
+
+  return { session: result.data as unknown as Database['public']['Tables']['sessions']['Row'] & { sets: SetRow[] } }
 }
 
-export default function SessionDetailRoute({ loaderData }: { loaderData: { session: Session & { sets: any[] } } }) {
-  const { session } = loaderData
-  const sets = (session as any).sets ?? []
+export default function SessionDetailRoute({ loaderData }: Route.ComponentProps) {
+  const { session } = loaderData as { session: Database['public']['Tables']['sessions']['Row'] & { sets: SetRow[] } }
+  const sets = session.sets ?? []
   const grouped = groupSetsByExercise(sets)
   const totalSets = sets.length
-  const prSets = sets.filter((s: any) => s.is_pr)
+  const prSets = sets.filter(s => s.is_pr)
 
   return (
     <div className="px-4 py-6 space-y-4">
@@ -58,7 +50,7 @@ export default function SessionDetailRoute({ loaderData }: { loaderData: { sessi
             </p>
           </div>
           {session.completed ? (
-            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-accent/10 text-accent border border-accent/20">
+            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg bg-primary/10 text-primary border border-primary/20">
               <CheckCircle2 size={12} />
               Completada
             </span>
@@ -69,7 +61,7 @@ export default function SessionDetailRoute({ loaderData }: { loaderData: { sessi
           )}
         </div>
 
-        {session.duration_s && (
+        {session.duration_s != null && (
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Clock size={14} />
             {formatDuration(session.duration_s)}
@@ -94,7 +86,7 @@ export default function SessionDetailRoute({ loaderData }: { loaderData: { sessi
       ) : (
         <div className="space-y-3">
           {Array.from(grouped.entries()).map(([exerciseName, exerciseSets]) => {
-            const hasPR = exerciseSets.some((s: any) => s.is_pr)
+            const hasPR = exerciseSets.some(s => s.is_pr)
             return (
               <div key={exerciseName} className="overflow-hidden rounded-2xl bg-card shadow-sm border border-border">
                 <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
@@ -102,7 +94,7 @@ export default function SessionDetailRoute({ loaderData }: { loaderData: { sessi
                   {hasPR && <Trophy size={14} className="text-primary" />}
                 </div>
                 <ul>
-                  {exerciseSets.map((s: any, i: number) => (
+                  {exerciseSets.map((s, i) => (
                     <li key={s.id}>
                       <div className={`px-4 py-3 ${s.is_pr ? 'bg-primary/5' : ''}`}>
                         <div className="flex items-center justify-between">
@@ -133,8 +125,8 @@ export default function SessionDetailRoute({ loaderData }: { loaderData: { sessi
   )
 }
 
-function groupSetsByExercise(sets: any[]): Map<string, any[]> {
-  const map = new Map<string, any[]>()
+function groupSetsByExercise(sets: SetRow[]): Map<string, SetRow[]> {
+  const map = new Map<string, SetRow[]>()
   for (const s of sets) {
     const name = s.exercises?.name_es ?? s.exercises?.name ?? 'Ejercicio'
     if (!map.has(name)) map.set(name, [])
