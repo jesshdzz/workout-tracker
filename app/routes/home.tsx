@@ -1,5 +1,4 @@
 import type { Route } from "./+types/home";
-import { Dashboard } from "../pages/dashboard";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +8,5 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Dashboard />;
+  return < div className="p-4">Welcome to Gym Tracker!</div >;
 }
