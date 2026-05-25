@@ -1,138 +1,105 @@
 import type { Route } from './+types/app.training.$sessionId'
 import { requireAuth } from '~/lib/auth.server'
-import { sessionsRepository } from '~/repositories/sessions.repository'
-import { formatDate, formatDuration } from '~/core/utils/formatters'
+import { useSessionDetail } from '~/features/training/hooks/useSessionDetail'
+import { SessionHeader } from '~/features/training/components/SessionHeader'
+import { ExerciseLog } from '~/features/training/components/ExerciseLog'
+import { RestTimer } from '~/features/training/components/RestTimer'
+import { useSessionStore } from '~/features/training/store/session.store'
 import { Link } from 'react-router'
-import { Clock, Trophy, CheckCircle2, Dumbbell } from 'lucide-react'
-import type { Database } from '~/core/types/database.types'
+import { Button } from '~/components/ui/button'
 
-type SetRow = Database['public']['Tables']['sets']['Row'] & {
-  exercises: Pick<Database['public']['Tables']['exercises']['Row'], 'id' | 'name' | 'name_es' | 'slug'> | null
-}
-
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const user = await requireAuth(request)
-  const result = await sessionsRepository.findById(params.sessionId ?? '')
-
-  console.log(result)
-
-  if (result.error || !result.data) {
-    throw new Response('Sesión no encontrada', { status: 404 })
-  }
-
-  if (result.data.user_id !== user.id) {
-    throw new Response('No autorizado', { status: 403 })
-  }
-
-  return { session: result.data as unknown as Database['public']['Tables']['sessions']['Row'] & { sets: SetRow[] } }
+export async function loader({ params, request }: Route.LoaderArgs) {
+  await requireAuth(request)
+  return { sessionId: params.sessionId }
 }
 
 export default function SessionDetailRoute({ loaderData }: Route.ComponentProps) {
-  const { session } = loaderData as { session: Database['public']['Tables']['sessions']['Row'] & { sets: SetRow[] } }
-  const sets = session.sets ?? []
-  const grouped = groupSetsByExercise(sets)
-  const totalSets = sets.length
-  const prSets = sets.filter(s => s.is_pr)
+  const { sessionId } = loaderData
+  const { isResting } = useSessionStore()
+
+  const {
+    session,
+    groupedExercises,
+    totalEffectiveSets,
+    totalPRs,
+    durationLabel,
+    loading,
+    error,
+  } = useSessionDetail(sessionId)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="w-6 h-6 border-2 rounded-full animate-spin border-primary border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (error || !session) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 px-4 bg-background">
+        <p className="text-sm text-center text-destructive">
+          {error ?? 'Sesión no encontrada'}
+        </p>
+        <Link to="/app">
+          <Button variant="outline" className="border-border text-muted-foreground">
+            Volver al inicio
+          </Button>
+        </Link>
+      </div>
+    )
+  }
 
   return (
-    <div className="px-4 py-6 space-y-4">
-      <Link to="/app" className="text-xs transition-colors text-muted-foreground hover:text-foreground">
-        ← Volver al dashboard
-      </Link>
+    <div className="min-h-screen pb-24 bg-background">
+      <div className="px-4 py-6 space-y-4">
 
-      <div className="p-4 space-y-3 border shadow-sm rounded-2xl bg-card border-border">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-foreground">
-              {session.name ?? 'Sesión sin nombre'}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {formatDate(session.date)}
-              {session.week_number ? ` · Semana ${session.week_number}` : ''}
-            </p>
-          </div>
-          {session.completed ? (
-            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium border rounded-lg bg-primary/10 text-primary border-primary/20">
-              <CheckCircle2 size={12} />
-              Completada
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium border rounded-lg bg-destructive/10 text-destructive border-destructive/20">
-              En progreso
-            </span>
-          )}
-        </div>
+        <SessionHeader
+          name={session.name}
+          date={session.date}
+          completed={session.completed ?? false}
+          durationLabel={durationLabel}
+          totalSets={totalEffectiveSets}
+          totalPRs={totalPRs}
+          routineName={session.routines?.name}
+          weekNumber={session.week_number}
+        />
 
-        {session.duration_s != null && (
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Clock size={14} />
-            {formatDuration(session.duration_s)}
+        {/* Timer si la sesión sigue activa */}
+        {!session.completed && isResting && (
+          <div className="sticky z-10 top-4">
+            <RestTimer />
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Dumbbell size={14} />
-          {totalSets} series · {grouped.size} ejercicios
-          {prSets.length > 0 && (
-            <span className="flex items-center gap-1 ml-2 text-primary">
-              <Trophy size={12} /> {prSets.length} PR
-            </span>
-          )}
-        </div>
-      </div>
+        {/* Continuar sesión si está activa */}
+        {!session.completed && (
+          <Link to="/app/training">
+            <Button className="w-full h-12 font-medium bg-primary hover:bg-primary/90">
+              Continuar sesión
+            </Button>
+          </Link>
+        )}
 
-      {sets.length === 0 ? (
-        <div className="p-8 text-center border rounded-2xl bg-card border-border">
-          <p className="text-sm text-muted-foreground">Esta sesión no tiene series registradas</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {Array.from(grouped.entries()).map(([exerciseName, exerciseSets]) => {
-            const hasPR = exerciseSets.some(s => s.is_pr)
-            return (
-              <div key={exerciseName} className="overflow-hidden border shadow-sm rounded-2xl bg-card border-border">
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                  <p className="text-sm font-medium text-foreground">{exerciseName}</p>
-                  {hasPR && <Trophy size={14} className="text-primary" />}
-                </div>
-                <ul>
-                  {exerciseSets.map((s, i) => (
-                    <li key={s.id}>
-                      <div className={`px-4 py-3 ${s.is_pr ? 'bg-primary/5' : ''}`}>
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            Serie {s.set_number} · {s.set_type === 'warmup' ? 'Calentamiento' : 'Efectiva'}
-                          </p>
-                          {s.is_pr && (
-                            <span className="flex items-center gap-1 text-xs font-medium text-primary">
-                              <Trophy size={12} /> PR
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-foreground mt-0.5">
-                          {s.weight} {s.weight_unit} × {s.reps} reps
-                          {s.rir_perceived != null ? ` · RIR ${s.rir_perceived}` : ''}
-                        </p>
-                      </div>
-                      {i < exerciseSets.length - 1 && <div className="h-px mx-4 bg-border" />}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )
-          })}
-        </div>
-      )}
+        {/* Ejercicios */}
+        {groupedExercises.length === 0 ? (
+          <div className="p-4 text-center rounded-2xl bg-card">
+            <p className="text-sm text-muted-foreground">No hay series registradas en esta sesión</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-foreground">Ejercicios</p>
+            {groupedExercises.map((group) => (
+              <ExerciseLog
+                key={group.exerciseId}
+                exerciseName={group.exerciseName}
+                sets={group.sets}
+              />
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   )
-}
-
-function groupSetsByExercise(sets: SetRow[]): Map<string, SetRow[]> {
-  const map = new Map<string, SetRow[]>()
-  for (const s of sets) {
-    const name = s.exercises?.name_es ?? s.exercises?.name ?? 'Ejercicio'
-    if (!map.has(name)) map.set(name, [])
-    map.get(name)!.push(s)
-  }
-  return map
 }

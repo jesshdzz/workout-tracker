@@ -1,7 +1,7 @@
-// app/repositories/sessions.repository.ts
 import { supabase } from '~/lib/supabase'
+// import { createServerSupabase } from '~/lib/supabase.server'
 import { BaseRepository } from './base.repository'
-import { AppServiceError, type Result } from '~/core/types/common.types'
+import { type Result } from '~/core/types/common.types'
 import type { Database } from '~/core/types/database.types'
 
 type Session = Database['public']['Tables']['sessions']['Row']
@@ -35,20 +35,39 @@ export class SessionsRepository extends BaseRepository {
       `)
       .eq('id', id)
       .maybeSingle()
+    return this.handle(data, error)
+  }
 
-    if (error) return { data: null, error }
+  // async serverFindById(id: string, request: Request): Promise<Result<Session>> {
+  //   const { supabase } = createServerSupabase(request)
+  //   const { data: session, error } = await supabase
+  //     .from('sessions')
+  //     .select(`*, routines(id, name), sets(*, exercises(id, name, name_es, slug))`)
+  //     .eq('id', id)
+  //     .maybeSingle()
 
-    if (!data) {
-      return {
-        data: null,
-        error: new AppServiceError(
-          `Sesión con id ${id} no encontrada`,
-          'SESSION_NOT_FOUND'
-        ) as any,
-      }
-    }
+  //   if (error || !session) {
+  //     throw new Response('Sesión no encontrada', { status: 404 })
+  //   }
+  //   return { data: session, error: null }
 
-    return { data, error: null }
+  // }
+
+  async findWithSets(id: string): Promise<Result<Session>> {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select(`
+      *,
+      routines(id, name),
+      sets(
+        *,
+        exercises(id, name, name_es, slug)
+      )
+    `)
+      .eq('id', id)
+      .maybeSingle()
+
+    return this.handle(data, error)
   }
 
   async findActive(userId: string): Promise<Result<Session | null>> {
