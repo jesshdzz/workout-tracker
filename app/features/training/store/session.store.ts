@@ -26,6 +26,7 @@ type SessionStore = {
   isResting: boolean
   restSeconds: number
   elapsedSeconds: number
+  startedAt: number | null
 
   // Acciones
   initSession: (sessionId: string, name?: string | null) => void
@@ -47,6 +48,7 @@ const initialState = {
   isResting: false,
   restSeconds: 0,
   elapsedSeconds: 0,
+  startedAt: null,
 }
 
 export const useSessionStore = create<SessionStore>()(
@@ -54,7 +56,7 @@ export const useSessionStore = create<SessionStore>()(
     (set) => ({
       ...initialState,
 
-      initSession: (sessionId: string, name?: string | null) => set({ sessionId, sessionName: name }),
+      initSession: (sessionId: string, name?: string | null) => set({ sessionId, sessionName: name, startedAt: Date.now(), elapsedSeconds: 0 }),
 
       setCurrentExercise: (exercise) => set({ currentExercise: exercise }),
 
@@ -81,7 +83,10 @@ export const useSessionStore = create<SessionStore>()(
         }),
 
       tickElapsed: () =>
-        set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 })),
+        set((state) => {
+          if (!state.startedAt) return { elapsedSeconds: state.elapsedSeconds + 1 }
+          return { elapsedSeconds: Math.floor((Date.now() - state.startedAt) / 1000) }
+        }),
 
       reset: () => set(initialState),
     }), {
@@ -90,6 +95,7 @@ export const useSessionStore = create<SessionStore>()(
       sessionId: state.sessionId,
       sessionName: state.sessionName,
       sets: state.sets,
+      startedAt: state.startedAt,
       elapsedSeconds: state.elapsedSeconds,
     }),
   })

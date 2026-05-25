@@ -1,4 +1,3 @@
-// app/features/training/hooks/useActiveSession.ts
 import { useEffect, useRef } from 'react'
 import { useSessionStore } from '../store/session.store'
 import { workoutService } from '~/services/workout.service'
@@ -19,14 +18,26 @@ export function useActiveSession() {
   } = useSessionStore()
 
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // const tickElapsed = useSessionStore((state) => state.tickElapsed)
 
-  // Cronómetro de sesión
-  useEffect(() => {
-    elapsedRef.current = setInterval(() => tickElapsed(), 1000)
-    return () => {
-      if (elapsedRef.current) clearInterval(elapsedRef.current)
+  const startTimer = () => {
+    if (elapsedRef.current) clearInterval(elapsedRef.current)
+    elapsedRef.current = setInterval(tickElapsed, 1000)
+  }
+
+  const pauseTimer = () => {
+    if (elapsedRef.current) {
+      clearInterval(elapsedRef.current)
+      elapsedRef.current = null
     }
-  }, [tickElapsed])
+  }
+
+  // Arranca automáticamente si hay sesión activa al montar
+  useEffect(() => {
+    if (!sessionId) return
+    startTimer()
+    return () => pauseTimer()
+  }, [sessionId])
 
   const startSession = async (options?: {
     routineId?: string
@@ -97,12 +108,18 @@ export function useActiveSession() {
 
   const finishSession = async () => {
     if (!sessionId) return
+    pauseTimer()
     await workoutService.finishSession(sessionId, elapsedSeconds)
-    if (elapsedRef.current) clearInterval(elapsedRef.current)
   }
 
   const setsForExercise = (exerciseId: string) =>
     sets.filter((s) => s.exerciseId === exerciseId)
+
+  const discardSession = async () => {
+    if (!sessionId) return
+    pauseTimer()
+    await workoutService.discardSession(sessionId)
+  }
 
   return {
     sessionId,
@@ -110,7 +127,9 @@ export function useActiveSession() {
     elapsedSeconds,
     startSession,
     logSet,
+    pauseTimer,
     finishSession,
+    discardSession,
     setsForExercise,
   }
 }
