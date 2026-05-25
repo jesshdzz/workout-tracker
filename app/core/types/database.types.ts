@@ -417,42 +417,54 @@ export type Database = {
         Row: {
           completed: boolean | null
           created_at: string | null
+          drop_reps: number | null
+          drop_weight: number | null
           exercise_id: string
           id: string
           is_pr: boolean | null
           reps: number | null
+          rest_pause_reps: number | null
           rir_perceived: number | null
           session_id: string | null
           set_number: number
           set_type: string
+          technique: string | null
           weight: number | null
           weight_unit: string
         }
         Insert: {
           completed?: boolean | null
           created_at?: string | null
+          drop_reps?: number | null
+          drop_weight?: number | null
           exercise_id: string
           id?: string
           is_pr?: boolean | null
           reps?: number | null
+          rest_pause_reps?: number | null
           rir_perceived?: number | null
           session_id?: string | null
           set_number: number
           set_type: string
+          technique?: string | null
           weight?: number | null
           weight_unit?: string
         }
         Update: {
           completed?: boolean | null
           created_at?: string | null
+          drop_reps?: number | null
+          drop_weight?: number | null
           exercise_id?: string
           id?: string
           is_pr?: boolean | null
           reps?: number | null
+          rest_pause_reps?: number | null
           rir_perceived?: number | null
           session_id?: string | null
           set_number?: number
           set_type?: string
+          technique?: string | null
           weight?: number | null
           weight_unit?: string
         }
