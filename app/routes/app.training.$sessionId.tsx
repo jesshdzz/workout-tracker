@@ -8,7 +8,7 @@ import { useSessionStore } from '~/features/training/store/session.store'
 import { Link } from 'react-router'
 import { Button } from '~/components/ui/button'
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function clientLoader({ params }: Route.LoaderArgs) {
   await requireAuth()
   return { sessionId: params.sessionId }
 }

@@ -6,7 +6,7 @@ import { WeekCard } from '~/features/dashboard/components/WeekCard'
 import { RecentSessions } from '~/features/dashboard/components/RecentSessions'
 import { PRCard } from '~/features/dashboard/components/PRCard'
 
-export async function loader(_: Route.LoaderArgs) {
+export async function clientLoader(_: Route.LoaderArgs) {
   await requireAuth()
   // currentWeek vendría del user_program_state — por ahora lo dejamos en 1
   // cuando implementemos el perfil completo lo leeremos de Supabase

@@ -14,12 +14,9 @@ import type { Database } from '~/core/types/database.types'
 
 type Exercise = Database['public']['Tables']['exercises']['Row']
 
-export async function loader(_: Route.LoaderArgs) {
+export async function clientLoader(_: Route.LoaderArgs) {
     await requireAuth()
     const result = await exercisesRepository.findAll()
-    if (result.error) {
-        console.error('Error loading exercises:', result.error)
-    }
     return { exercises: result.data ?? [] }
 }
 
@@ -79,7 +76,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                         placeholder="Ej: Upper A, Pecho y espalda..."
                         value={sessionName}
                         onChange={(e) => setSessionName(e.target.value)}
-                        className="w-full max-w-sm px-4 py-3 rounded-xl bg-card text-foreground border border-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full max-w-sm px-4 py-3 border rounded-xl bg-card text-foreground border-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <p className="mt-2 mb-4 text-xs text-muted-foreground">Deja el campo vacío para usar un nombre predeterminado</p>
 
@@ -126,7 +123,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
 
             <div className="space-y-3">
                 {exercises.length === 0 ? (
-                    <div className="flex items-center justify-center p-8 rounded-2xl bg-card border border-border">
+                    <div className="flex items-center justify-center p-8 border rounded-2xl bg-card border-border">
                         <p className="text-sm text-muted-foreground">No hay ejercicios disponibles</p>
                     </div>
                 ) : (
