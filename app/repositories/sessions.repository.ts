@@ -17,7 +17,7 @@ export class SessionsRepository extends BaseRepository {
         sets(count)
       `)
       .eq('user_id', userId)
-      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(limit)
     return this.handle(data, error)
   }

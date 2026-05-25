@@ -97,7 +97,7 @@ export function ExerciseCard({
                 {s.isPR && <span className="text-xs font-bold text-primary">🏆 PR</span>}
               </div>
               <p className="text-foreground text-sm font-medium mt-0.5">
-                {s.weightKg} {s.weightUnit} × {s.reps} reps · RIR {s.rirPerceived}
+                {s.weight} {s.weightUnit} × {s.reps} reps · RIR {s.rirPerceived}
               </p>
             </div>
           ))}
