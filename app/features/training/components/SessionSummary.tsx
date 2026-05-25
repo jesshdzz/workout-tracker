@@ -17,7 +17,7 @@ export function SessionSummary({ sets, elapsedSeconds, onFinish }: Props) {
 
     const totalSets = sets.length
     const exercisesWorked = new Set(sets.map(s => s.exerciseId)).size
-    const totalWeight = sets.reduce((acc, s) => acc + s.weightKg * s.reps, 0)
+    const totalWeight = sets.reduce((acc, s) => acc + s.weight * s.reps, 0)
 
     const stats = [
         { icon: Clock, label: 'Duración', value: formatDuration(elapsedSeconds) },
@@ -27,7 +27,7 @@ export function SessionSummary({ sets, elapsedSeconds, onFinish }: Props) {
     ]
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-foreground/20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-end justify-center mb-14 sm:items-center bg-foreground/20 backdrop-blur-sm">
             <div className="w-full max-w-lg p-6 space-y-6 border bg-card rounded-t-2xl sm:rounded-2xl border-border">
                 <div className="text-center">
                     <div className="flex items-center justify-center mx-auto mb-3 rounded-full w-14 h-14 bg-primary/10">

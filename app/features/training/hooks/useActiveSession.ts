@@ -39,7 +39,7 @@ export function useActiveSession() {
     const result = await workoutService.startSession(user.id, options)
     if (result.error || !result.data) return null
 
-    initSession(result.data.id)
+    initSession(result.data.id, options?.name ?? 'Sesión sin nombre')
     return result.data
   }
 
@@ -73,7 +73,7 @@ export function useActiveSession() {
       exerciseName: input.exerciseName,
       setNumber: input.setNumber,
       setType: input.setType,
-      weightKg: input.weight,
+      weight: input.weight,
       weightUnit: input.weightUnit,
       reps: input.reps,
       rirPerceived: input.rirPerceived,
