@@ -1,16 +1,18 @@
 import { formatDuration } from '~/core/utils/formatters'
 import { Clock, Dumbbell, Trophy, ListChecks } from 'lucide-react'
 import { Button } from '~/components/ui/button'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import type { ActiveSet } from '../store/session.store'
 
 type Props = {
     sets: ActiveSet[]
     elapsedSeconds: number
-    onFinish: () => void
+    onSave: () => void
+    onDiscard: () => void
 }
 
-export function SessionSummary({ sets, elapsedSeconds, onFinish }: Props) {
+export function SessionSummary({ sets, elapsedSeconds, onSave, onDiscard }: Props) {
+    const navigate = useNavigate()
     const effectiveSets = sets.filter((s) => s.setType === 'effective')
     const prs = sets.filter((s) => s.isPR)
     const exercises = [...new Set(sets.map((s) => s.exerciseName))]
@@ -27,7 +29,7 @@ export function SessionSummary({ sets, elapsedSeconds, onFinish }: Props) {
     ]
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center mb-14 sm:items-center bg-foreground/20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center bg-foreground/20 backdrop-blur-sm">
             <div className="w-full max-w-lg p-6 space-y-6 border bg-card rounded-t-2xl sm:rounded-2xl border-border">
                 <div className="text-center">
                     <div className="flex items-center justify-center mx-auto mb-3 rounded-full w-14 h-14 bg-primary/10">
@@ -57,14 +59,18 @@ export function SessionSummary({ sets, elapsedSeconds, onFinish }: Props) {
                 
                 <div className="w-full space-y-3">
                     <Button
-                        onClick={onFinish}
+                        onClick={onSave}
                         className="w-full h-12 font-medium"
                     >
                         Guardar y salir
                     </Button>
-                    <Link to="/app" className="block text-sm text-center transition-colors text-muted-foreground hover:text-foreground">
+                    <button
+                        type="button"
+                        onClick={async () => { await onDiscard(); navigate('/app') }}
+                        className="w-full text-sm text-center transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+                    >
                         Ir al dashboard
-                    </Link>
+                    </button>
                 </div>
             </div>
         </div>
