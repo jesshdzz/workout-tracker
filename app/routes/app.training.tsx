@@ -4,32 +4,45 @@ import { requireAuth } from '~/lib/auth'
 import { exercisesRepository } from '~/repositories/exercises.repository'
 import { useActiveSession } from '~/features/training/hooks/useActiveSession'
 import { useSessionStore } from '~/features/training/store/session.store'
-import { ExerciseCard } from '~/features/training/components/ExerciseCard'
+import { SortableExerciseList } from '~/features/training/components/SortableExerciseList'
+import { ExercisePicker } from '~/features/training/components/ExercisePicker'
 import { RestTimer } from '~/features/training/components/RestTimer'
 import { SessionSummary } from '~/features/training/components/SessionSummary'
 import { FinishSessionModal } from '~/features/training/components/FinishSessionModal'
 import { Button } from '~/components/ui/button'
-import { Clock, Play, Square, Dumbbell, ArrowLeft } from 'lucide-react'
+import { Clock, Play, Square, Dumbbell, Plus, ArrowLeft } from 'lucide-react'
 import { formatDuration } from '~/core/utils/formatters'
 import { Link, useNavigate } from 'react-router'
+import type { Database } from '~/core/types/database.types'
+
+type ExerciseWithMuscles = Database['public']['Tables']['exercises']['Row'] & {
+    exercise_muscles: {
+        role: string
+        muscle_groups: { slug: string; name_es: string; body_region: string } | null
+    }[]
+}
 
 export async function clientLoader(_: Route.LoaderArgs) {
     await requireAuth()
     const result = await exercisesRepository.findAll()
-    console.log('Exercises loader result:', result)
-    return { exercises: result.data ?? [] }
+    return { exercises: (result.data ?? []) as ExerciseWithMuscles[] }
 }
 
 export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const { exercises } = loaderData
     const navigate = useNavigate()
-    const { startSession, finishSession, pauseTimer, sets, elapsedSeconds, discardSession } = useActiveSession()
-    const { sessionId, sessionName, reset } = useSessionStore()
+
+    const { startSession, finishSession, discardSession, sets, elapsedSeconds } = useActiveSession()
+    const {
+        sessionId, sessionName, reset,
+        sessionExercises, addExerciseToSession, reorderExercises,
+    } = useSessionStore()
 
     const [started, setStarted] = useState(!!sessionId)
     const [starting, setStarting] = useState(false)
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [showSummary, setShowSummary] = useState(false)
+    const [showPicker, setShowPicker] = useState(false)
     const [inputName, setInputName] = useState('')
 
     const handleStart = async () => {
@@ -40,39 +53,37 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
         setStarted(true)
     }
 
-    // Usuario toca "Finalizar" → muestra modal de confirmación
-    const handleFinishPress = () => {
-        setShowConfirmModal(true)
-    }
+    const handleFinishPress = () => setShowConfirmModal(true)
 
-    // Usuario confirma en el modal → pausa timer y muestra resumen
     const handleConfirmFinish = () => {
         setShowConfirmModal(false)
         setShowSummary(true)
     }
 
-    // Usuario cancela el modal → vuelve al entrenamiento
-    const handleCancelFinish = () => {
-        setShowConfirmModal(false)
-    }
-
-    // Usuario toca "Guardar y salir" en el resumen
-    // → marca como completada en BD, limpia store, va al dashboard
     const handleSave = async () => {
-        await finishSession()  // guarda en BD con duration_s
-        reset()                // limpia localStorage y store
+        await finishSession()
+        reset()
         navigate('/app')
     }
 
-    // Usuario toca "Ir al dashboard" en el resumen
-    // → elimina la sesión incompleta de la BD, limpia todo, va al dashboard
     const handleDiscard = async () => {
         await discardSession()
         reset()
         navigate('/app')
     }
 
-    // Pantalla de resumen (sobre el entrenamiento)
+    const handleAddExercises = (selected: ExerciseWithMuscles[]) => {
+        selected.forEach((ex, i) => {
+            addExerciseToSession({
+                exerciseId: ex.id,
+                exerciseName: ex.name_es ?? ex.name,
+                order: sessionExercises.length + i,
+            })
+        })
+    }
+
+    const alreadyInSession = sessionExercises.map((ex) => ex.exerciseId)
+
     if (showSummary) {
         return (
             <SessionSummary
@@ -84,7 +95,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
         )
     }
 
-    // Pantalla inicial — sin sesión activa
+    // Pantalla inicial
     if (!started || !sessionId) {
         return (
             <div className="px-4 py-20">
@@ -114,11 +125,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                     <p className="mt-2 mb-4 text-xs text-muted-foreground">
                         Deja el campo vacío para usar un nombre predeterminado
                     </p>
-                    <Button
-                        onClick={handleStart}
-                        disabled={starting}
-                        className="w-full max-w-xs"
-                    >
+                    <Button onClick={handleStart} disabled={starting} className="w-full max-w-xs">
                         <Play size={16} />
                         {starting ? 'Preparando...' : 'Comenzar sesión'}
                     </Button>
@@ -129,12 +136,20 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
 
     // Sesión activa
     return (
-        <div className="px-4 py-4 space-y-4">
-            {/* Modal de confirmación */}
+        <div className="px-4 py-4 pb-32 space-y-4">
+            {/* Modales */}
             {showConfirmModal && (
                 <FinishSessionModal
                     onConfirm={handleConfirmFinish}
-                    onCancel={handleCancelFinish}
+                    onCancel={() => setShowConfirmModal(false)}
+                />
+            )}
+            {showPicker && (
+                <ExercisePicker
+                    exercises={exercises}
+                    alreadyInSession={alreadyInSession}
+                    onAdd={handleAddExercises}
+                    onClose={() => setShowPicker(false)}
                 />
             )}
 
@@ -166,16 +181,33 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
 
             <RestTimer />
 
-            <div className="space-y-3">
-                {exercises.map(exercise => (
-                    <ExerciseCard
-                        key={exercise.id}
-                        exercise={exercise}
-                        weightUnit="kg"
-                        targetSets={2}
-                    />
-                ))}
-            </div>
+            {/* Lista de ejercicios vacía */}
+            {sessionExercises.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 space-y-3">
+                    <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-muted">
+                        <Dumbbell size={24} className="text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-center text-muted-foreground">
+                        No hay ejercicios en esta sesión.{'\n'}Toca el botón + para agregar.
+                    </p>
+                </div>
+            ) : (
+                <SortableExerciseList
+                    sessionExercises={sessionExercises}
+                    allExercises={exercises}
+                    weightUnit="kg"
+                    onReorder={reorderExercises}
+                />
+            )}
+
+            {/* FAB */}
+            <button
+                onClick={() => setShowPicker(true)}
+                className="fixed z-50 flex items-center h-12 gap-2 px-4 text-sm font-medium transition-colors rounded-full shadow-lg bottom-20 right-4 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+                <Plus size={18} />
+                Ejercicio
+            </button>
         </div>
     )
 }
