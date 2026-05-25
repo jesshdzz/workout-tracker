@@ -43,15 +43,15 @@ function SortableItem({
 
     return (
         <div ref={setNodeRef} style={style} className="relative">
-            {/* Handle de reordenamiento */}
+            {/* Handle de reordenamiento
             <button
                 {...attributes}
                 {...listeners}
                 className="absolute z-10 flex items-center justify-center w-6 h-8 -translate-y-1/2 left-2 top-1/2 text-muted-foreground hover:text-foreground touch-none"
             >
                 <GripVertical size={14} />
-            </button>
-            <div className="pl-6">
+            </button> */}
+            <div className="px-1">
                 <ExerciseCard
                     exercise={exercise}
                     weightUnit={weightUnit}

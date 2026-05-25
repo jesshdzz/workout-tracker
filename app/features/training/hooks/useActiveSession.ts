@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useSessionStore } from '../store/session.store'
+import { useSessionStore, type ActiveSet } from '../store/session.store'
 import { workoutService } from '~/services/workout.service'
 import { useAuth } from '~/features/auth/AuthProvider'
 
@@ -59,9 +59,13 @@ export function useActiveSession() {
     exerciseName: string
     setNumber: number
     setType: 'warmup' | 'effective'
+    technique: 'normal' | 'rest_pause' | 'drop_set' | 'failure'  // ← añade
     weight: number
     weightUnit: 'kg' | 'lb'
     reps: number
+    restPauseReps?: number    // ← añade
+    dropWeight?: number       // ← añade
+    dropReps?: number         // ← añade
     rirPerceived: number
     restAfterSeconds?: number
   }) => {
@@ -71,22 +75,31 @@ export function useActiveSession() {
       exerciseId: input.exerciseId,
       setNumber: input.setNumber,
       setType: input.setType,
+      technique: input.technique,       // ← añade
       weight: input.weight,
       weightUnit: input.weightUnit,
       reps: input.reps,
+      restPauseReps: input.restPauseReps,   // ← añade
+      dropWeight: input.dropWeight,      // ← añade
+      dropReps: input.dropReps,        // ← añade
       rirPerceived: input.rirPerceived,
     })
 
     if (result.error || !result.data) return null
 
-    const newSet = {
+    const newSet: ActiveSet = {
+      id: result.data.set.id,    // ← viene del resultado de BD
       exerciseId: input.exerciseId,
       exerciseName: input.exerciseName,
       setNumber: input.setNumber,
       setType: input.setType,
+      technique: input.technique,       // ← añade
       weight: input.weight,
       weightUnit: input.weightUnit,
       reps: input.reps,
+      restPauseReps: input.restPauseReps,   // ← añade
+      dropWeight: input.dropWeight,      // ← añade
+      dropReps: input.dropReps,        // ← añade
       rirPerceived: input.rirPerceived,
       completed: true,
       isPR: result.data.isPR,
@@ -121,6 +134,22 @@ export function useActiveSession() {
     await workoutService.discardSession(sessionId)
   }
 
+  const updateSetInStore = async (setId: string, updates: Partial<ActiveSet>) => {
+    // Actualiza el store inmediatamente (optimistic update)
+    useSessionStore.getState().updateSet(setId, updates)
+
+    // Sincroniza con la BD
+    await workoutService.updateSet(setId, {
+      weight: updates.weight,
+      reps: updates.reps,
+      restPauseReps: updates.restPauseReps,
+      dropWeight: updates.dropWeight,
+      dropReps: updates.dropReps,
+      rirPerceived: updates.rirPerceived,
+      technique: updates.technique,
+    })
+  }
+
   return {
     sessionId,
     sets,
@@ -131,5 +160,6 @@ export function useActiveSession() {
     finishSession,
     discardSession,
     setsForExercise,
+    updateSetInStore,
   }
 }
