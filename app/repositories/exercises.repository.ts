@@ -46,7 +46,7 @@ export class ExercisesRepository extends BaseRepository {
     }
 
     return { data, error: null }
-    return this.handle(data, error)
+    // return this.handle(data, error)
   }
 
   async findByMuscleGroup(muscleSlug: string): Promise<Result<Exercise[]>> {

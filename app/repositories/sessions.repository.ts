@@ -100,6 +100,18 @@ export class SessionsRepository extends BaseRepository {
       .single()
     return this.handle(data, error)
   }
+
+  async discardSession(sessionId: string): Promise<void> {
+    await supabase
+      .from('sets')
+      .delete()
+      .eq('session_id', sessionId)
+
+    await supabase
+      .from('sessions')
+      .delete()
+      .eq('id', sessionId)
+  }
 }
 
 export const sessionsRepository = new SessionsRepository()

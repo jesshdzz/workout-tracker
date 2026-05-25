@@ -122,4 +122,8 @@ export const workoutService = {
   async getActiveSession(userId: string): Promise<Result<Session | null>> {
     return sessionsRepository.findActive(userId)
   },
+
+  async discardSession(sessionId: string): Promise<void> {
+    await sessionsRepository.discardSession(sessionId)
+  },
 }
