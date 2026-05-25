@@ -1,6 +1,5 @@
-// app/services/workout.service.ts
 import { sessionsRepository } from '~/repositories/sessions.repository'
-import { setsRepository } from '~/repositories/sets.repository'
+import { setsRepository, type SetWithSession } from '~/repositories/sets.repository'
 import { recordsRepository } from '~/repositories/records.repository'
 import { rmsRepository } from '~/repositories/rms.repository'
 import { calcRM } from '~/core/utils/epley'
@@ -14,10 +13,14 @@ type Set = Database['public']['Tables']['sets']['Row']
 type LogSetInput = {
   exerciseId: string
   setNumber: number
-  setType: SetType
+  setType: 'warmup' | 'effective'
+  technique: 'normal' | 'rest_pause' | 'drop_set' | 'failure'
   weight: number
-  weightUnit: WeightUnit
+  weightUnit: 'kg' | 'lb'
   reps: number
+  restPauseReps?: number
+  dropWeight?: number
+  dropReps?: number
   rirPerceived: number
 }
 
@@ -58,9 +61,13 @@ export const workoutService = {
       exercise_id: input.exerciseId,
       set_number: input.setNumber,
       set_type: input.setType,
+      technique: input.technique,
       weight: input.weight,
       weight_unit: input.weightUnit,
       reps: input.reps,
+      rest_pause_reps: input.restPauseReps ?? null,
+      drop_weight: input.dropWeight ?? null,
+      drop_reps: input.dropReps ?? null,
       rir_perceived: input.rirPerceived,
       is_pr: false,
       completed: true,
@@ -126,4 +133,23 @@ export const workoutService = {
   async discardSession(sessionId: string): Promise<void> {
     await sessionsRepository.discardSession(sessionId)
   },
+
+  async updateSet(
+    setId: string,
+    updates: {
+      weight?: number
+      reps?: number
+      restPauseReps?: number
+      dropWeight?: number
+      dropReps?: number
+      rirPerceived?: number
+      technique?: string
+    }
+  ): Promise<Result<Set>> {
+    return setsRepository.update(setId, updates)
+  },
+
+  async getExerciseHistory(exerciseId: string, userId: string, currentSessionId: string | null): Promise<Result<SetWithSession[]>> {
+    return setsRepository.findLastByExercise(userId, exerciseId, currentSessionId)
+  }
 }
