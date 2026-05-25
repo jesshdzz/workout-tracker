@@ -1,5 +1,5 @@
 import type { Route } from './+types/app.training.$sessionId'
-import { requireAuth } from '~/lib/auth.server'
+import { requireAuth } from '~/lib/auth'
 import { useSessionDetail } from '~/features/training/hooks/useSessionDetail'
 import { SessionHeader } from '~/features/training/components/SessionHeader'
 import { ExerciseLog } from '~/features/training/components/ExerciseLog'
@@ -8,8 +8,8 @@ import { useSessionStore } from '~/features/training/store/session.store'
 import { Link } from 'react-router'
 import { Button } from '~/components/ui/button'
 
-export async function loader({ params, request }: Route.LoaderArgs) {
-  await requireAuth(request)
+export async function loader({ params }: Route.LoaderArgs) {
+  await requireAuth()
   return { sessionId: params.sessionId }
 }
 
@@ -75,7 +75,7 @@ export default function SessionDetailRoute({ loaderData }: Route.ComponentProps)
         {/* Continuar sesión si está activa */}
         {!session.completed && (
           <Link to="/app/training">
-            <Button className="w-full h-12 font-medium bg-primary hover:bg-primary/90">
+            <Button className="w-full h-12 mt-3 font-medium bg-primary hover:bg-primary/90">
               Continuar sesión
             </Button>
           </Link>

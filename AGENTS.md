@@ -20,24 +20,15 @@ pnpm typecheck    # react-router typegen && tsc
 
 No test framework, linter, or formatter is configured.
 
-## Supabase & SSR auth (critical)
+## Supabase auth (SPA mode)
 
-The app uses `@supabase/ssr` for cookie-based sessions. There are two client factories:
+The app uses `@supabase/supabase-js` directly (no SSR). The supabase client is a singleton created via `createClient()` in `app/lib/supabase.ts`.
 
-- **`app/lib/supabase.ts`** — browser client (`createBrowserClient`). Stores session in cookies. Imported by repositories and auth service for client-side use.
-- **`app/lib/supabase.server.ts`** — exports `createServerSupabase(request)` for server loaders/actions. Reads cookies from the `Request` object. Does NOT support setting cookies on responses (no `setAll` handler is needed for read-only auth).
+Auth is enforced in loaders via `app/lib/auth.ts`:
+- `requireAuth()` — redirects to `/auth/login` if unauthenticated
+- `requireGuest()` — redirects to `/app` if authenticated
 
-**Never instantiate a Supabase client manually** — always use one of these two.
-
-Server-side auth is enforced in loaders via `app/lib/auth.server.ts`:
-```ts
-// ❌ Wrong — will fail silently
-requireAuth()
-// ✅ Correct — pass the request so cookies can be read
-requireAuth(request)
-```
-
-Both `requireAuth(request)` and `requireGuest(request)` must receive the `request` from the loader's args.
+**`requireAuth()` and `requireGuest()` do NOT take a request argument.** They use the browser supabase singleton directly.
 
 ## Architecture
 

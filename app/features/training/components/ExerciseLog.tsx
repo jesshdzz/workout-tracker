@@ -17,7 +17,7 @@ export function ExerciseLog({ exerciseName, sets }: Props) {
   const effectives = sets.filter((s) => s.set_type === 'effective')
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-card border border-border">
+    <div className="overflow-hidden border rounded-2xl bg-card border-border">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <p className="text-sm font-medium text-foreground">{exerciseName}</p>
@@ -62,7 +62,7 @@ function SetRow({ set }: { set: SetWithExercise }) {
       <div className="flex items-center gap-3">
         <span className="w-4 text-xs text-muted-foreground">#{set.set_number}</span>
         <span className="font-mono text-sm text-foreground">
-          {set.weight ?? set.weight} {set.weight_unit}
+          {set.weight} {set.weight_unit}
           <span className="mx-1 text-muted-foreground">×</span>
           {set.reps} reps
         </span>

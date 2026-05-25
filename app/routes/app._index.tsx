@@ -1,13 +1,13 @@
 import type { Route } from './+types/app._index'
-import { requireAuth } from '~/lib/auth.server'
+import { requireAuth } from '~/lib/auth'
 import { useDashboard } from '~/features/dashboard/hooks/useDashboard'
 import { BlockProgress } from '~/features/dashboard/components/BlockProgress'
 import { WeekCard } from '~/features/dashboard/components/WeekCard'
 import { RecentSessions } from '~/features/dashboard/components/RecentSessions'
 import { PRCard } from '~/features/dashboard/components/PRCard'
 
-export async function loader({ request }: Route.LoaderArgs) {
-  await requireAuth(request)
+export async function loader(_: Route.LoaderArgs) {
+  await requireAuth()
   // currentWeek vendría del user_program_state — por ahora lo dejamos en 1
   // cuando implementemos el perfil completo lo leeremos de Supabase
   return { currentWeek: 1 }

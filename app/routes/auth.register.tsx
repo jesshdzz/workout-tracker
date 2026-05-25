@@ -1,10 +1,10 @@
 // app/routes/auth.register.tsx
 import type { Route } from './+types/auth.register'
-import { requireGuest } from '~/lib/auth.server'
+import { requireGuest } from '~/lib/auth'
 import { RegisterForm } from '~/features/auth/components/RegisterForm'
 
-export async function loader({ request }: Route.LoaderArgs) {
-  await requireGuest(request)
+export async function loader(_: Route.LoaderArgs) {
+  await requireGuest()
   return {}
 }
 

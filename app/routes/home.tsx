@@ -3,7 +3,7 @@ import type { Route } from "./+types/home";
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Gym Tracker" },
-    { name: "description", content: "Welcome to React Router!" },
+    { name: "description", content: "Track your workouts and improve your performance." },
   ];
 }
 

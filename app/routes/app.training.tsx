@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Route } from './+types/app.training'
-import { requireAuth } from '~/lib/auth.server'
+import { requireAuth } from '~/lib/auth'
 import { exercisesRepository } from '~/repositories/exercises.repository'
 import { useActiveSession } from '~/features/training/hooks/useActiveSession'
 import { useSessionStore } from '~/features/training/store/session.store'
@@ -14,8 +14,8 @@ import type { Database } from '~/core/types/database.types'
 
 type Exercise = Database['public']['Tables']['exercises']['Row']
 
-export async function loader({ request }: Route.LoaderArgs) {
-    await requireAuth(request)
+export async function loader(_: Route.LoaderArgs) {
+    await requireAuth()
     const result = await exercisesRepository.findAll()
     if (result.error) {
         console.error('Error loading exercises:', result.error)
