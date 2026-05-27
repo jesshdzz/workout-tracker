@@ -130,8 +130,8 @@ export const workoutService = {
     return sessionsRepository.findActive(userId)
   },
 
-  async discardSession(sessionId: string): Promise<void> {
-    await sessionsRepository.discardSession(sessionId)
+  async discardSession(sessionId: string): Promise<Result<null>> {
+    return sessionsRepository.discardSession(sessionId)
   },
 
   async updateSet(
@@ -153,7 +153,7 @@ export const workoutService = {
     return setsRepository.findLastByExercise(userId, exerciseId, currentSessionId)
   },
 
-  async deleteSet(setId: string): Promise<void> {
-    await setsRepository.delete(setId)
+  async deleteSet(setId: string): Promise<Result<null>> {
+    return setsRepository.delete(setId)
   },
 }

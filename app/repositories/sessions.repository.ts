@@ -91,26 +91,28 @@ export class SessionsRepository extends BaseRepository {
     return this.handle(data, error)
   }
 
-  async complete(id: string, durationSeconds?: number): Promise<Result<Session>> {
+  async complete(id: string, updates: Partial<Session>): Promise<Result<Session>> {
     const { data, error } = await supabase
       .from('sessions')
-      .update({ completed: true, duration_s: durationSeconds ?? null })
+      .update({ ...updates, completed: true })
       .eq('id', id)
       .select()
       .single()
     return this.handle(data, error)
   }
 
-  async discardSession(sessionId: string): Promise<void> {
+  async discardSession(sessionId: string): Promise<Result<null>> {
     await supabase
       .from('sets')
       .delete()
       .eq('session_id', sessionId)
 
-    await supabase
+    const { error } = await supabase
       .from('sessions')
       .delete()
       .eq('id', sessionId)
+
+    return this.handle(null, error)
   }
 }
 
