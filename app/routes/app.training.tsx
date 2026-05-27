@@ -35,7 +35,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const { startSession, finishSession, discardSession, sets, elapsedSeconds } = useActiveSession()
     const {
         sessionId, sessionName, reset,
-        sessionExercises, addExerciseToSession, reorderExercises,
+        sessionExercises, addExerciseToSession, reorderExercises, removeExerciseFromSession
     } = useSessionStore()
 
     const [started, setStarted] = useState(!!sessionId)
@@ -197,6 +197,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                     allExercises={exercises}
                     weightUnit="kg"
                     onReorder={reorderExercises}
+                    onRemoveExercise={removeExerciseFromSession}
                 />
             )}
 

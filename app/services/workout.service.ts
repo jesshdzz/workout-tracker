@@ -151,5 +151,9 @@ export const workoutService = {
 
   async getExerciseHistory(exerciseId: string, userId: string, currentSessionId: string | null): Promise<Result<SetWithSession[]>> {
     return setsRepository.findLastByExercise(userId, exerciseId, currentSessionId)
-  }
+  },
+
+  async deleteSet(setId: string): Promise<void> {
+    await setsRepository.delete(setId)
+  },
 }

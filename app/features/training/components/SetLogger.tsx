@@ -12,6 +12,7 @@ type Props = {
     setType: 'warmup' | 'effective'
     suggestedWeight?: number
     weightUnit: WeightUnit
+    onCancel?: () => void
     onLog: (data: {
         weight: number
         reps: number
@@ -70,7 +71,7 @@ function NumberInput({
 
 export function SetLogger({
     exerciseId, exerciseName, setNumber,
-    setType: initialSetType, suggestedWeight, weightUnit, onLog,
+    setType: initialSetType, suggestedWeight, weightUnit, onCancel, onLog,
 }: Props) {
     const [currentSetType, setCurrentSetType] = useState(initialSetType)
     const [currentWeightUnit, setCurrentWeightUnit] = useState<WeightUnit>(weightUnit)
@@ -140,8 +141,8 @@ export function SetLogger({
                             type="button"
                             onClick={() => setCurrentSetType(type)}
                             className={`flex-1 py-1.5 text-xs font-medium transition-colors ${currentSetType === type
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card text-muted-foreground hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             {type === 'warmup' ? 'Calentamiento' : 'Efectiva'}
@@ -155,8 +156,8 @@ export function SetLogger({
                             type="button"
                             onClick={() => setCurrentWeightUnit(unit)}
                             className={`px-3 py-1.5 text-xs font-medium transition-colors ${currentWeightUnit === unit
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card text-muted-foreground hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-muted-foreground hover:text-foreground'
                                 }`}
                         >
                             {unit}
@@ -175,8 +176,8 @@ export function SetLogger({
                             type="button"
                             onClick={() => setTechnique(t.value)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${technique === t.value
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card text-muted-foreground border border-border hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-muted-foreground border border-border hover:text-foreground'
                                 }`}
                         >
                             {t.label}
@@ -259,8 +260,8 @@ export function SetLogger({
                                 type="button"
                                 onClick={() => setRir(r)}
                                 className={`flex-1 h-8 text-xs font-medium rounded-lg transition-colors ${rir === r
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-card text-muted-foreground border border-border hover:text-foreground'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-card text-muted-foreground border border-border hover:text-foreground'
                                     }`}
                             >
                                 {r}
@@ -280,8 +281,8 @@ export function SetLogger({
                             type="button"
                             onClick={() => setRest(r.value)}
                             className={`flex-1 h-8 text-xs font-medium rounded-lg transition-colors ${rest === r.value
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card text-muted-foreground border border-border hover:text-foreground'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-card text-muted-foreground border border-border hover:text-foreground'
                                 }`}
                         >
                             {r.label}
@@ -289,6 +290,16 @@ export function SetLogger({
                     ))}
                 </div>
             </div>
+
+            {onCancel && (
+                <button
+                    type="button"
+                    onClick={onCancel}
+                    className="w-full py-2 text-sm transition-colors text-muted-foreground hover:text-foreground"
+                >
+                    Cancelar
+                </button>
+            )}
 
             <Button
                 onClick={handleLog}

@@ -51,8 +51,10 @@ type SessionStore = {
   tickElapsed: () => void
   reset: () => void
   addExerciseToSession: (exercise: SessionExercise) => void
+  removeExerciseFromSession: (exerciseId: string) => void
   reorderExercises: (from: number, to: number) => void
   updateSet: (id: string, updates: Partial<ActiveSet>) => void
+  removeSet: (id: string) => void
 }
 
 const initialState = {
@@ -128,6 +130,19 @@ export const useSessionStore = create<SessionStore>()(
           sets: state.sets.map((s) =>
             s.id === id ? { ...s, ...updates } : s
           ),
+        })),
+
+      removeSet: (id) =>
+        set((state) => ({
+          sets: state.sets.filter((s) => s.id !== id),
+        })),
+
+      removeExerciseFromSession: (exerciseId) =>
+        set((state) => ({
+          sessionExercises: state.sessionExercises
+            .filter((ex) => ex.exerciseId !== exerciseId)
+            .map((ex, i) => ({ ...ex, order: i })),
+          sets: state.sets.filter((s) => s.exerciseId !== exerciseId),
         })),
     }), {
     name: 'active-session', // nombre de la clave en localStorage

@@ -7,7 +7,6 @@ import {
     useSortable, arrayMove
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical } from 'lucide-react'
 import { ExerciseCard } from './ExerciseCard'
 import type { SessionExercise } from '../store/session.store'
 import type { Database } from '~/core/types/database.types'
@@ -19,16 +18,19 @@ type Props = {
     allExercises: Exercise[]
     weightUnit: 'kg' | 'lb'
     onReorder: (from: number, to: number) => void
+    onRemoveExercise: (exerciseId: string) => void
 }
 
 function SortableItem({
     sessionEx,
     exercise,
     weightUnit,
+    onRemoveExercise
 }: {
     sessionEx: SessionExercise
     exercise: Exercise
     weightUnit: 'kg' | 'lb'
+    onRemoveExercise: (exerciseId: string) => void
 }) {
     const {
         attributes, listeners, setNodeRef,
@@ -53,16 +55,17 @@ function SortableItem({
             </button> */}
             <div className="px-1">
                 <ExerciseCard
+                    key={sessionEx.exerciseId}
                     exercise={exercise}
                     weightUnit={weightUnit}
-                    targetSets={2}
+                    onRemove={() => onRemoveExercise(sessionEx.exerciseId)}
                 />
             </div>
         </div>
     )
 }
 
-export function SortableExerciseList({ sessionExercises, allExercises, weightUnit, onReorder }: Props) {
+export function SortableExerciseList({ sessionExercises, allExercises, weightUnit, onReorder, onRemoveExercise }: Props) {
     const sensors = useSensors(useSensor(PointerSensor, {
         activationConstraint: { distance: 8 },
     }))
@@ -94,6 +97,7 @@ export function SortableExerciseList({ sessionExercises, allExercises, weightUni
                                 sessionEx={sessionEx}
                                 exercise={exercise}
                                 weightUnit={weightUnit}
+                                onRemoveExercise={onRemoveExercise}
                             />
                         )
                     })}

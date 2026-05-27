@@ -150,6 +150,11 @@ export function useActiveSession() {
     })
   }
 
+  const deleteSetFromStore = async (setId: string) => {
+    useSessionStore.getState().removeSet(setId)
+    await workoutService.deleteSet(setId)
+  }
+
   return {
     sessionId,
     sets,
@@ -161,5 +166,6 @@ export function useActiveSession() {
     discardSession,
     setsForExercise,
     updateSetInStore,
+    deleteSetFromStore,
   }
 }
