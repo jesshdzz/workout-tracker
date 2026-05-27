@@ -1,19 +1,15 @@
-import type { Route } from './+types/app'
-import { Outlet } from 'react-router'
-import { requireAuth } from '~/lib/auth'
+import { useOnlineSync } from '~/core/sync/useOnlineSync'
+import { OfflineBanner } from '~/shared/components/OfflineBanner'
 import { BottomNav } from '~/shared/components/BottomNav'
+import { Outlet } from 'react-router'
 
-export async function clientLoader(_: Route.LoaderArgs) {
-  await requireAuth()
-  return {}
-}
+export default function AppLayout() {
+  const { isOnline, pendingCount } = useOnlineSync()
 
-export default function AppLayout({ loaderData }: Route.ComponentProps) {
   return (
-    <div className="min-h-screen pb-20 bg-background">
-      <div className="max-w-lg mx-auto">
-        <Outlet />
-      </div>
+    <div className="min-h-screen pb-16 bg-background">
+      {!isOnline && <OfflineBanner pendingCount={pendingCount} />}
+      <Outlet />
       <BottomNav />
     </div>
   )

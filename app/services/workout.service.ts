@@ -1,11 +1,10 @@
 import { sessionsRepository } from '~/repositories/sessions.repository'
 import { setsRepository, type SetWithSession } from '~/repositories/sets.repository'
 import { recordsRepository } from '~/repositories/records.repository'
-import { rmsRepository } from '~/repositories/rms.repository'
 import { calcRM } from '~/core/utils/epley'
 import type { Result } from '~/core/types/common.types'
 import type { Database } from '~/core/types/database.types'
-import type { SetType, WeightUnit } from '~/core/types/common.types'
+import { enqueue } from '~/core/sync/syncQueue'
 
 type Session = Database['public']['Tables']['sessions']['Row']
 type Set = Database['public']['Tables']['sets']['Row']
@@ -50,13 +49,11 @@ export const workoutService = {
     })
   },
 
-  async logSet(
-    sessionId: string,
-    userId: string,
-    input: LogSetInput
-  ): Promise<Result<LogSetResult>> {
-    // 1. Guardar la serie
-    const setResult = await setsRepository.create({
+  async logSet(sessionId: string, userId: string, input: LogSetInput) {
+    // 1. Genera un UUID local para la serie
+    const localId = crypto.randomUUID()
+    const payload = {
+      id: localId,
       session_id: sessionId,
       exercise_id: input.exerciseId,
       set_number: input.setNumber,
@@ -71,52 +68,49 @@ export const workoutService = {
       rir_perceived: input.rirPerceived,
       is_pr: false,
       completed: true,
+    }
+
+    // 2. Encola la operación (se ejecuta online o en background)
+    enqueue({
+      type: 'create_set',
+      payload: payload,
     })
 
-    if (setResult.error) return { data: null, error: setResult.error }
+    // 3. Si hay conexión, intenta sincronizar inmediatamente
+    if (navigator.onLine) {
+      const { data, error } = await setsRepository.create(payload)
 
-    // 2. Solo verificar PRs en series efectivas
-    if (input.setType !== 'effective') {
-      return { data: { set: setResult.data, isPR: false, newRM: null }, error: null }
+      if (!error && data) {
+        // Calcula PR
+        const estimatedRM = calcRM(input.weight, input.reps)
+        const currentPR = await recordsRepository.findBest(input.exerciseId, 'estimated_1rm')
+        const isPR = !currentPR.data || estimatedRM > currentPR.data.value
+
+        if (isPR) {
+          await recordsRepository.create({
+            user_id: userId,
+            exercise_id: input.exerciseId,
+            record_type: 'estimated_1rm',
+            value: estimatedRM,
+            set_id: data.id,
+            achieved_at: new Date().toISOString().split('T')[0],
+          })
+          await setsRepository.update(data.id, { is_pr: true })
+        }
+
+        return {
+          data: { set: { ...data, id: localId }, isPR, newRM: isPR ? estimatedRM : null },
+          error: null,
+        }
+      }
     }
 
-    // 3. Calcular RM estimado de esta serie
-    const estimatedRM = calcRM(input.weight, input.reps)
-
-    // 4. Comparar con el mejor PR existente
-    const currentPR = await recordsRepository.findBest(input.exerciseId, 'estimated_1rm')
-    const isPR = !currentPR.data || estimatedRM > currentPR.data.value
-
-    if (isPR) {
-      // 5. Guardar nuevo PR
-      await recordsRepository.create({
-        user_id: userId,
-        exercise_id: input.exerciseId,
-        record_type: 'estimated_1rm',
-        value: estimatedRM,
-        set_id: setResult.data.id,
-        achieved_at: new Date().toISOString().split('T')[0],
-      })
-
-      // 6. Marcar la serie como PR
-      await setsRepository.update(setResult.data.id, { is_pr: true })
-
-      // 7. Actualizar el RM del usuario
-      await rmsRepository.upsert({
-        user_id: userId,
-        exercise_id: input.exerciseId,
-        rm_kg: Math.round(estimatedRM * 10) / 10,
-        tested_weight: input.weight,
-        tested_reps: input.reps,
-        tested_at: new Date().toISOString().split('T')[0],
-      })
-    }
-
+    // 4. Sin conexión — retorna con el ID local, sin PR (se recalcula al sincronizar)
     return {
       data: {
-        set: setResult.data,
-        isPR,
-        newRM: isPR ? estimatedRM : null,
+        set: { id: localId } as any,
+        isPR: false,
+        newRM: null,
       },
       error: null,
     }
