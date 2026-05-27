@@ -1,4 +1,3 @@
-// app/repositories/routines.repository.ts
 import { supabase } from '~/lib/supabase'
 import { BaseRepository } from './base.repository'
 import { AppServiceError, type Result } from '~/core/types/common.types'

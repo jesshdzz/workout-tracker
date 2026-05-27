@@ -1,4 +1,3 @@
-// app/repositories/rms.repository.ts
 import { supabase } from '~/lib/supabase'
 import { BaseRepository } from './base.repository'
 import type { Result } from '~/core/types/common.types'
