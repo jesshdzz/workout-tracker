@@ -1,6 +1,5 @@
 // app/services/progression.service.ts
 import { rmsRepository } from '~/repositories/rms.repository'
-import { setsRepository } from '~/repositories/sets.repository'
 import { calcWorkingWeight } from '~/core/utils/epley'
 import { getBlockConfig } from '~/core/utils/periodization'
 import type { Result } from '~/core/types/common.types'

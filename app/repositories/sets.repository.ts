@@ -131,6 +131,16 @@ export class SetsRepository extends BaseRepository {
     const { error } = await supabase.from('sets').delete().eq('id', id)
     return this.handle(error ? null : null, error ?? null)
   }
+
+  async setsCountBySessionIds(sessionIds: string[]): Promise<Result<{ session_id: string | null}[]>> {
+    const { data, error } = await supabase
+      .from('sets')
+      .select('session_id')
+      .in('session_id', sessionIds)
+      .eq('set_type', 'effective')
+
+    return this.handle(data, error)
+  }
 }
 
 export const setsRepository = new SetsRepository()

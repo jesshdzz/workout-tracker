@@ -38,21 +38,6 @@ export class SessionsRepository extends BaseRepository {
     return this.handle(data, error)
   }
 
-  // async serverFindById(id: string, request: Request): Promise<Result<Session>> {
-  //   const { supabase } = createServerSupabase(request)
-  //   const { data: session, error } = await supabase
-  //     .from('sessions')
-  //     .select(`*, routines(id, name), sets(*, exercises(id, name, name_es, slug))`)
-  //     .eq('id', id)
-  //     .maybeSingle()
-
-  //   if (error || !session) {
-  //     throw new Response('Sesión no encontrada', { status: 404 })
-  //   }
-  //   return { data: session, error: null }
-
-  // }
-
   async findWithSets(id: string): Promise<Result<Session>> {
     const { data, error } = await supabase
       .from('sessions')
@@ -67,6 +52,17 @@ export class SessionsRepository extends BaseRepository {
       .eq('id', id)
       .maybeSingle()
 
+    return this.handle(data, error)
+  }
+
+  async findCompletedRecentByUser(userId: string, limit = 5): Promise<Result<Session[]>> {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('completed', true)
+      .order('date', { ascending: false })
+      .limit(limit)
     return this.handle(data, error)
   }
 
