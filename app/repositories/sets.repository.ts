@@ -76,6 +76,15 @@ export class SetsRepository extends BaseRepository {
   async create(set: SetInsert): Promise<Result<Set>> {
     const { data, error } = await supabase
       .from('sets')
+      .upsert(set, { onConflict: 'id' })
+      .select()
+      .single()
+    return this.handle(data, error)
+  }
+
+  async upsert(set: SetInsert): Promise<Result<Set>> {
+    const { data, error } = await supabase
+      .from('sets')
       .insert(set)
       .select()
       .single()

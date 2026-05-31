@@ -8,16 +8,16 @@ type SetUpdate = Database['public']['Tables']['sets']['Update']
 type SessionUpdate = Database['public']['Tables']['sessions']['Update']
 
 type SyncPayload =
-    | { type: 'create_set'; payload: SetInsert & { id: string } }
-    | { type: 'update_set'; payload: SetUpdate & { id: string } }
-    | { type: 'delete_set'; payload: { id: string } }
-    | { type: 'complete_session'; payload: SessionUpdate & { id: string } }
-    | { type: 'discard_session'; payload: { id: string } }
+  | { type: 'create_set'; payload: SetInsert & { id: string } }
+  | { type: 'update_set'; payload: SetUpdate & { id: string; session_id?: string } }
+  | { type: 'delete_set'; payload: { id: string } }
+  | { type: 'complete_session'; payload: SessionUpdate & { id: string } }
+  | { type: 'discard_session'; payload: { id: string } }
 
 export type SyncOperation = SyncPayload & {
-    opId: string
-    createdAt: number
-    retries: number
+  opId: string
+  createdAt: number
+  retries: number
 }
 
 const QUEUE_KEY = 'sync_queue'
@@ -64,7 +64,7 @@ async function executeOperation(op: SyncOperation): Promise<boolean> {
   try {
     switch (op.type) {
       case 'create_set': {
-        const { data, error } = await setsRepository.create(op.payload)
+        const { data, error } = await setsRepository.upsert(op.payload)
         return !error
       }
       case 'update_set': {
@@ -82,7 +82,7 @@ async function executeOperation(op: SyncOperation): Promise<boolean> {
         return !error
       }
       case 'discard_session': {
-        const {error} = await sessionsRepository.discardSession(op.payload.id)
+        const { error } = await sessionsRepository.discardSession(op.payload.id)
         return !error
       }
     }

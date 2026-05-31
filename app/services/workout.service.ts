@@ -4,7 +4,7 @@ import { recordsRepository } from '~/repositories/records.repository'
 import { calcRM } from '~/core/utils/epley'
 import type { Result } from '~/core/types/common.types'
 import type { Database } from '~/core/types/database.types'
-import { enqueue } from '~/core/sync/syncQueue'
+import { drainQueue, enqueue, getQueue, removeFromQueue } from '~/core/sync/syncQueue'
 
 type Session = Database['public']['Tables']['sessions']['Row']
 type Set = Database['public']['Tables']['sets']['Row']
@@ -52,6 +52,7 @@ export const workoutService = {
   async logSet(sessionId: string, userId: string, input: LogSetInput) {
     // 1. Genera un UUID local para la serie
     const localId = crypto.randomUUID()
+
     const payload = {
       id: localId,
       session_id: sessionId,
@@ -70,7 +71,7 @@ export const workoutService = {
       completed: true,
     }
 
-    // 2. Encola la operación (se ejecuta online o en background)
+    // 2. Encola la operación
     enqueue({
       type: 'create_set',
       payload: payload,
@@ -78,54 +79,65 @@ export const workoutService = {
 
     // 3. Si hay conexión, intenta sincronizar inmediatamente
     if (navigator.onLine) {
-      const { data, error } = await setsRepository.create(payload)
-
-      if (!error && data) {
-        // Calcula PR
-        const estimatedRM = calcRM(input.weight, input.reps)
-        const currentPR = await recordsRepository.findBest(input.exerciseId, 'estimated_1rm')
-        const isPR = !currentPR.data || estimatedRM > currentPR.data.value
-
-        if (isPR) {
-          await recordsRepository.create({
-            user_id: userId,
-            exercise_id: input.exerciseId,
-            record_type: 'estimated_1rm',
-            value: estimatedRM,
-            set_id: data.id,
-            achieved_at: new Date().toISOString().split('T')[0],
-          })
-          await setsRepository.update(data.id, { is_pr: true })
-        }
-
-        return {
-          data: { set: { ...data, id: localId }, isPR, newRM: isPR ? estimatedRM : null },
-          error: null,
-        }
-      }
+      await drainQueue()
     }
 
+    const estimatedRM = calcRM(input.weight, input.reps)
+    const currentPR = await recordsRepository.findBest(input.exerciseId, 'estimated_1rm')
+    const isPR = input.setType === 'effective' && (!currentPR.data || estimatedRM > currentPR.data.value)
+
+    if (isPR && navigator.onLine) {
+      await recordsRepository.create({
+        user_id: userId,
+        exercise_id: input.exerciseId,
+        record_type: 'estimated_1rm',
+        value: estimatedRM,
+        set_id: localId,
+        achieved_at: new Date().toISOString().split('T')[0],
+      })
+    }
     // 4. Sin conexión — retorna con el ID local, sin PR (se recalcula al sincronizar)
     return {
       data: {
         set: { id: localId } as any,
-        isPR: false,
-        newRM: null,
+        isPR,
+        newRM: isPR ? estimatedRM : null,
       },
       error: null,
     }
   },
 
-  async finishSession(sessionId: string, updates?: Partial<Session>): Promise<Result<Session>> {
-    return sessionsRepository.complete(sessionId, updates ?? {})
+  async finishSession(sessionId: string, durationSeconds: number): Promise<Result<Session>> {
+    if (navigator.onLine) await drainQueue()
+    enqueue({
+      type: 'complete_session',
+      payload: {
+        id: sessionId,
+        completed: true,
+        duration_s: durationSeconds,
+      },
+    })
+
+    if (navigator.onLine) await drainQueue()
+
+    return { data: null as any, error: null }
   },
 
   async getActiveSession(userId: string): Promise<Result<Session | null>> {
     return sessionsRepository.findActive(userId)
   },
 
-  async discardSession(sessionId: string): Promise<Result<null>> {
-    return sessionsRepository.discardSession(sessionId)
+  async discardSession(sessionId: string): Promise<void> {
+    const queue = getQueue()
+    queue
+      .filter(op =>
+        (op.type === 'create_set' && op.payload.session_id === sessionId) ||
+        (op.type === 'update_set' && op.payload.session_id === sessionId)
+      )
+      .forEach(op => removeFromQueue(op.opId))
+
+    enqueue({ type: 'discard_session', payload: { id: sessionId } })
+    if (navigator.onLine) await drainQueue()
   },
 
   async updateSet(
