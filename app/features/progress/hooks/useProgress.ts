@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '~/lib/supabase'
 import { useAuth } from '~/features/auth/AuthProvider'
 import { recordsRepository } from '~/repositories/records.repository'
 import { sessionsRepository } from '~/repositories/sessions.repository'
