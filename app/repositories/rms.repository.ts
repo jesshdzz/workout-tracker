@@ -5,13 +5,15 @@ import type { Database } from '~/core/types/database.types'
 
 type RM = Database['public']['Tables']['personal_rms']['Row']
 type RMInsert = Database['public']['Tables']['personal_rms']['Insert']
+type orderType = 'rm_kg' | 'tested_at' | 'created_at'
 
 export class RMsRepository extends BaseRepository {
-  async findByUser(userId: string): Promise<Result<RM[]>> {
+  async findByUser(userId: string, order: orderType = 'created_at', ascending: boolean): Promise<Result<RM[]>> {
     const { data, error } = await supabase
       .from('personal_rms')
       .select('*, exercises(id, name, name_es, slug)')
       .eq('user_id', userId)
+      .order(order, { ascending })
     return this.handle(data, error)
   }
 
