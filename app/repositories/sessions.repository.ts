@@ -61,7 +61,7 @@ export class SessionsRepository extends BaseRepository {
       .select('*')
       .eq('user_id', userId)
       .eq('completed', true)
-      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(limit)
     return this.handle(data, error)
   }
