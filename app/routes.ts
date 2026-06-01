@@ -12,7 +12,7 @@ export default [
         route('app/training/active', 'routes/app.training.active.tsx'),
         route("app/training/:sessionId", "routes/app.training.$sessionId.tsx"),
         route("app/routines", "routes/app.routines.tsx"),
-        // route("app/routines/:id", "routes/app.routines.$id.tsx"),
+        // route("app/routines/:id",        "routes/app.routines.$id.tsx"),
         route("app/progress", "routes/app.progress.tsx"),
         route("app/profile", "routes/app.profile.tsx"),
     ]),

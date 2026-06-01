@@ -92,8 +92,8 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
 
     const alreadyInSession = sessionExercises.map((ex) => ex.exerciseId)
 
-    {
-        showSummary && (
+    if (showSummary) {
+        return (
             <SessionSummary
                 sets={sets}
                 elapsedSeconds={elapsedSeconds}

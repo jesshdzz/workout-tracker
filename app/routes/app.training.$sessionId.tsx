@@ -74,7 +74,7 @@ export default function SessionDetailRoute({ loaderData }: Route.ComponentProps)
 
         {/* Continuar sesión si está activa */}
         {!session.completed && (
-          <Link to="/app/training">
+          <Link to="/app/training/active">
             <Button className="w-full h-12 mt-3 font-medium bg-primary hover:bg-primary/90">
               Continuar sesión
             </Button>
