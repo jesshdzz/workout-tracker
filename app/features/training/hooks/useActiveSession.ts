@@ -122,7 +122,7 @@ export function useActiveSession() {
   const finishSession = async () => {
     if (!sessionId) return
     pauseTimer()
-    await workoutService.finishSession(sessionId, {duration_s: elapsedSeconds })
+    await workoutService.finishSession(sessionId, elapsedSeconds)
   }
 
   const setsForExercise = (exerciseId: string) =>
