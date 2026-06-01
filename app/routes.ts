@@ -7,13 +7,14 @@ export default [
     route("auth/register", "routes/auth.register.tsx"),
 
     layout("routes/app.tsx", [
-        route("app",            "routes/app._index.tsx"),
-        route('app/training',   'routes/app.training.tsx'),
+        route("app", "routes/app._index.tsx"),
+        route('app/training', 'routes/app.training.tsx'),
+        route('app/training/active', 'routes/app.training.active.tsx'),
         route("app/training/:sessionId", "routes/app.training.$sessionId.tsx"),
-        route("app/routines",   "routes/app.routines.tsx"),
+        route("app/routines", "routes/app.routines.tsx"),
         // route("app/routines/:id", "routes/app.routines.$id.tsx"),
-        route("app/progress",   "routes/app.progress.tsx"),
-        route("app/profile",    "routes/app.profile.tsx"),
+        route("app/progress", "routes/app.progress.tsx"),
+        route("app/profile", "routes/app.profile.tsx"),
     ]),
-    
+
 ] satisfies RouteConfig;
