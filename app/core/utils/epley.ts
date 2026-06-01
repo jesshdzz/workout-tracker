@@ -6,7 +6,11 @@ export const calcRM = (weight: number, reps: number): number => {
 
 // Calcula el peso de trabajo dado un RM y un porcentaje de intensidad
 // Redondea al 2.5kg más cercano para que sea un peso real en el gym
-export const calcWorkingWeight = (rm: number, intensityPct: number): number => {
+export const calcWorkingWeight = (rm: number, intensityPct: number, weightType: 'kg' | 'lb'): number => {
+  if (weightType === 'lb') {
+    // Para lb, redondeamos al 5lb más cercano
+    return Math.round((rm * intensityPct) / 5) * 5
+  }
   return Math.round((rm * intensityPct) / 2.5) * 2.5
 }
 

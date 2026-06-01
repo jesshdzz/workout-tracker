@@ -8,7 +8,8 @@ type Props = { rms: RMEntry[] }
 
 export function RMSettings({ rms }: Props) {
   const [weight, setWeight] = useState('')
-  const [reps, setReps]     = useState('')
+  const [reps, setReps] = useState('')
+  const [currentWeightType, setCurrentWeightType] = useState<'kg' | 'lb'>('kg')
   const [showCalc, setShowCalc] = useState(false)
 
   const estimated = weight && reps
@@ -16,9 +17,9 @@ export function RMSettings({ rms }: Props) {
     : null
 
   const INTENSITIES = [
-    { pct: 0.65, label: 'Bloque 1 (65%)'  },
-    { pct: 0.78, label: 'Bloque 2 (78%)'  },
-    { pct: 0.88, label: 'Bloque 3 (88%)'  },
+    { pct: 0.65, label: 'Bloque 1 (65%)' },
+    { pct: 0.78, label: 'Bloque 2 (78%)' },
+    { pct: 0.88, label: 'Bloque 3 (88%)' },
   ]
 
   return (
@@ -81,7 +82,7 @@ export function RMSettings({ rms }: Props) {
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground">Peso (kg)</label>
+                <label className="text-xs text-muted-foreground">Peso (kg / lb)</label>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -109,12 +110,27 @@ export function RMSettings({ rms }: Props) {
                 <div className="p-3 text-center border rounded-xl bg-primary/10 border-primary/20">
                   <p className="text-xs text-muted-foreground">1RM estimado</p>
                   <p className="text-3xl font-bold font-mono text-primary mt-0.5">
-                    {estimated.toFixed(1)} kg
+                    {estimated.toFixed(1)} {currentWeightType}
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground">Pesos de trabajo por bloque</p>
+                  <div className="flex items-center justify-between pt-2 rounded-lg">
+                    <p className="flex-grow text-xs text-muted-foreground">Pesos de trabajo por bloque</p>
+                    {(['kg', 'lb'] as const).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setCurrentWeightType(type)}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${currentWeightType === type
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card text-muted-foreground hover:text-foreground'
+                          }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
                   {INTENSITIES.map(({ pct, label }) => (
                     <div
                       key={pct}
@@ -122,7 +138,7 @@ export function RMSettings({ rms }: Props) {
                     >
                       <span className="text-xs text-muted-foreground">{label}</span>
                       <span className="font-mono text-sm font-medium text-foreground">
-                        {calcWorkingWeight(estimated, pct)} kg
+                        {calcWorkingWeight(estimated, pct, currentWeightType)} {currentWeightType}
                       </span>
                     </div>
                   ))}
