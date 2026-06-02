@@ -17,6 +17,7 @@ import type { Database } from '~/core/types/database.types'
 import type { RoutineWithExercises } from '~/repositories/routines.repository'
 import type { RoutineExerciseConfig } from '~/features/routines/components/RoutineBuilder'
 import { useAuth } from '~/features/auth/AuthProvider'
+import { RoutinePreviewSheet } from '~/features/routines/components/RoutinePreviewSheet'
 
 type ExerciseWithMuscles = Database['public']['Tables']['exercises']['Row'] & {
     exercise_muscles: {
@@ -46,6 +47,8 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const { startSession } = useActiveSession()
     const { sessionId } = useSessionStore()
     const [modal, setModal] = useState<Modal>(null)
+    const [previewRoutine, setPreviewRoutine] = useState<RoutineWithExercises | null>(null)
+
 
     useEffect(() => {
         if (searchParams.get('createRoutine') === '1') {
@@ -84,6 +87,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                     targetSets: re.target_sets ?? 2,
                     targetReps: re.target_reps ?? '8-12',
                     targetRir: re.target_rir ?? null,
+                    intensityPct: re.intensity_pct ?? null,
                 })
             }
         })
@@ -249,7 +253,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                             <RoutineCard
                                 key={routine.id}
                                 routine={routine}
-                                onStart={() => handleStartRoutine(routine)}
+                                onStart={() => setPreviewRoutine(routine)}
                                 onEdit={() => setModal({ type: 'builder', routine })}
                                 onRename={() => setModal({ type: 'rename', routine })}
                                 onDuplicate={() => duplicate(routine.id)}
@@ -259,6 +263,21 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                     </div>
                 )}
             </div>
+
+            {previewRoutine && (
+                <RoutinePreviewSheet
+                    routine={previewRoutine}
+                    onStart={() => {
+                        handleStartRoutine(previewRoutine)
+                        setPreviewRoutine(null)
+                    }}
+                    onEdit={() => {
+                        setPreviewRoutine(null)
+                        setModal({ type: 'builder', routine: previewRoutine })
+                    }}
+                    onClose={() => setPreviewRoutine(null)}
+                />
+            )}
         </div>
     )
 }

@@ -30,11 +30,13 @@ export type SessionExercise = {
   targetSets: number
   targetReps: string
   targetRir: number | null
+  intensityPct: number | null
 }
 
 type SessionStore = {
   sessionId: string | null
   sessionName: string | null
+  routineId: string | null
   currentExercise: Exercise | null
   sets: ActiveSet[]
   isResting: boolean
@@ -63,6 +65,7 @@ type SessionStore = {
 const initialState = {
   sessionId: null,
   sessionName: null,
+  routineId: null,
   currentExercise: null,
   sets: [],
   isResting: false,
@@ -77,7 +80,7 @@ export const useSessionStore = create<SessionStore>()(
     (set) => ({
       ...initialState,
 
-      initSession: (sessionId: string, name?: string | null) => set({ sessionId, sessionName: name, startedAt: Date.now(), elapsedSeconds: 0 }),
+      initSession: (sessionId: string, name?: string | null, routineId?: string | null) => set({ sessionId, sessionName: name, routineId: routineId ?? null, startedAt: Date.now(), elapsedSeconds: 0 }),
 
       setCurrentExercise: (exercise) => set({ currentExercise: exercise }),
 
@@ -152,6 +155,7 @@ export const useSessionStore = create<SessionStore>()(
     partialize: (state) => ({       // solo persiste lo necesario
       sessionId: state.sessionId,
       sessionName: state.sessionName,
+      routineId: state.routineId,
       sets: state.sets,
       startedAt: state.startedAt,
       elapsedSeconds: state.elapsedSeconds,

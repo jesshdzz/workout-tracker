@@ -2,8 +2,18 @@ import { useState } from 'react'
 import { Trophy, Check, ChevronDown } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import type { WeightUnit } from '~/core/types/common.types'
+import { useKeyboard } from '~/features/training/context/keyboardContext'
 
 type Technique = 'normal' | 'rest_pause' | 'drop_set' | 'failure'
+
+type NumericFieldProps = {
+    label: string
+    value: string
+    unit?: string
+    onTap: () => void
+    active?: boolean
+}
+
 
 type Props = {
     exerciseId: string
@@ -42,6 +52,25 @@ const REST_OPTIONS = [
     { label: '2m', value: 120 },
     { label: '3m', value: 180 },
 ]
+
+function NumericField({ label, value, unit, onTap, active }: NumericFieldProps) {
+    return (
+        <button
+            type="button"
+            onPointerDown={(e) => { e.preventDefault(); onTap() }}
+            className={`flex-1 flex flex-col items-center justify-center py-3 rounded-xl border transition-colors ${active
+                ? 'border-primary bg-primary/5'
+                : 'border-border bg-card hover:bg-muted'
+                }`}
+        >
+            <span className="mb-1 text-xs text-muted-foreground">{label}</span>
+            <span className={`text-2xl font-bold font-mono ${value ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {value || '—'}
+            </span>
+            {unit && <span className="text-xs text-muted-foreground mt-0.5">{unit}</span>}
+        </button>
+    )
+}
 
 function NumberInput({
     label, value, onChange, placeholder, step = '1', min = '0'
@@ -87,6 +116,7 @@ export function SetLogger({
     const [loading, setLoading] = useState(false)
     const [logged, setLogged] = useState(false)
     const [wasPR, setWasPR] = useState(false)
+    const keyboard = useKeyboard()
 
     const isValid = () => {
         if (!weight || !reps) return false
@@ -189,18 +219,30 @@ export function SetLogger({
 
             {/* Peso y Reps principales */}
             <div className="flex gap-2">
-                <NumberInput
+                <NumericField
                     label={`Peso (${currentWeightUnit})`}
                     value={weight}
-                    onChange={setWeight}
-                    placeholder={suggestedWeight?.toString() ?? '0'}
-                    step="0.5"
+                    unit={currentWeightUnit}
+                    active={keyboard.activeField?.key === 'weight'}
+                    onTap={() => keyboard.openKeyboard({
+                        key: 'weight',
+                        value: weight,
+                        label: `Peso (${currentWeightUnit})`,
+                        decimal: true,
+                        onCommit: setWeight,
+                    })}
                 />
-                <NumberInput
+                <NumericField
                     label={`Reps ${suggestedReps ? `(obj. ${suggestedReps})` : ''}`}
                     value={reps}
-                    onChange={setReps}
-                    placeholder="0"
+                    active={keyboard.activeField?.key === 'reps'}
+                    onTap={() => keyboard.openKeyboard({
+                        key: 'reps',
+                        value: reps,
+                        label: 'Repeticiones',
+                        decimal: false,
+                        onCommit: setReps,
+                    })}
                 />
             </div>
 
@@ -256,17 +298,18 @@ export function SetLogger({
                     <label className="text-xs text-muted-foreground mb-1.5 block">RIR percibido</label>
                     <div className="flex gap-1.5">
                         {RIR_OPTIONS.map((r) => (
-                            <button
-                                key={r}
-                                type="button"
-                                onClick={() => setRir(r)}
-                                className={`flex-1 h-8 text-xs font-medium rounded-lg transition-colors ${rir === r
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-card text-muted-foreground border border-border hover:text-foreground'
-                                    }`}
-                            >
-                                {r}
-                            </button>
+                            <NumericField
+                                label="RIR"
+                                value={rir.toString()}
+                                active={keyboard.activeField?.key === 'rir'}
+                                onTap={() => keyboard.openKeyboard({
+                                    key: 'rir',
+                                    value: rir.toString(),
+                                    label: 'RIR percibido (0-4)',
+                                    decimal: false,
+                                    onCommit: (v) => setRir(Math.min(4, Math.max(0, parseInt(v) || 0))),
+                                })}
+                            />
                         ))}
                     </div>
                 </div>
