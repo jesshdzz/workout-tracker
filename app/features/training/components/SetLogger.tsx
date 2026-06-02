@@ -12,6 +12,7 @@ type Props = {
     setType: 'warmup' | 'effective'
     suggestedWeight?: number
     weightUnit: WeightUnit
+    suggestedReps?: string
     onCancel?: () => void
     onLog: (data: {
         weight: number
@@ -71,13 +72,13 @@ function NumberInput({
 
 export function SetLogger({
     exerciseId, exerciseName, setNumber,
-    setType: initialSetType, suggestedWeight, weightUnit, onCancel, onLog,
+    setType: initialSetType, suggestedWeight, weightUnit, suggestedReps, onCancel, onLog,
 }: Props) {
     const [currentSetType, setCurrentSetType] = useState(initialSetType)
     const [currentWeightUnit, setCurrentWeightUnit] = useState<WeightUnit>(weightUnit)
     const [technique, setTechnique] = useState<Technique>('normal')
     const [weight, setWeight] = useState(suggestedWeight?.toString() ?? '')
-    const [reps, setReps] = useState('')
+    const [reps, setReps] = useState(suggestedReps ?? '')
     const [rpReps, setRpReps] = useState('')        // rest-pause extra reps
     const [dropWeight, setDropWeight] = useState('')      // drop-set peso reducido
     const [dropReps, setDropReps] = useState('')        // drop-set reps extra
@@ -196,7 +197,7 @@ export function SetLogger({
                     step="0.5"
                 />
                 <NumberInput
-                    label="Reps"
+                    label={`Reps ${suggestedReps ? `(obj. ${suggestedReps})` : ''}`}
                     value={reps}
                     onChange={setReps}
                     placeholder="0"

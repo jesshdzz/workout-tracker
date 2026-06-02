@@ -81,6 +81,9 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                     exerciseId: re.exercises.id,
                     exerciseName: re.exercises.name_es ?? re.exercises.name,
                     order: i,
+                    targetSets: re.target_sets ?? 2,
+                    targetReps: re.target_reps ?? '8-12',
+                    targetRir: re.target_rir ?? null,
                 })
             }
         })

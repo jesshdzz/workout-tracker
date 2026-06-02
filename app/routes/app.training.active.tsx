@@ -16,6 +16,9 @@ import { Link, useNavigate } from 'react-router'
 import type { Database } from '~/core/types/database.types'
 
 type ExerciseWithMuscles = Database['public']['Tables']['exercises']['Row'] & {
+    target_reps?: string
+    target_sets?: number
+    target_rir?: number | null
     exercise_muscles: {
         role: string
         muscle_groups: { slug: string; name_es: string; body_region: string } | null
@@ -63,21 +66,21 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const handleSaveWithRoutine = async () => {
         await finishSession()
         reset()
-        setShowSummary(false)
-        setStarted(false)
-        navigate('/app/training?createRoutine=1')
+        // setShowSummary(false)
+        // setStarted(false)
+        navigate('/app/training?createRoutine=1', { replace: true })
     }
 
     const handleSaveOnly = async () => {
         await finishSession()
         reset()
-        navigate('/app')
+        navigate('/app', { replace: true })
     }
 
     const handleDiscard = async () => {
         await discardSession()
         reset()
-        navigate('/app')
+        navigate('/app', { replace: true })
     }
 
     const handleAddExercises = (selected: ExerciseWithMuscles[]) => {
@@ -86,6 +89,9 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                 exerciseId: ex.id,
                 exerciseName: ex.name_es ?? ex.name,
                 order: sessionExercises.length + i,
+                targetSets: ex.target_sets ?? 2,
+                targetReps: ex.target_reps ?? '8-12',
+                targetRir: ex.target_rir ?? null,
             })
         })
     }

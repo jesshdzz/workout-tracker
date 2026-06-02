@@ -1,4 +1,3 @@
-// app/features/training/components/ExerciseCard.tsx
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Info, History, Plus, Trash2 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
@@ -34,6 +33,13 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
   const effectiveSets = completedSets.filter(s => s.setType === 'effective')
   const nextSetNumber = effectiveSets.length + 1
 
+  const sessionExercise = useSessionStore(
+    state => state.sessionExercises.find(ex => ex.exerciseId === exercise.id)
+  )
+
+  const targetSets = sessionExercise?.targetSets ?? 2
+  const targetReps = sessionExercise?.targetReps ?? ''
+
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
@@ -66,7 +72,8 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
             {exercise.name_es ?? exercise.name}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {effectiveSets.length} serie{effectiveSets.length !== 1 ? 's' : ''} efectiva{effectiveSets.length !== 1 ? 's' : ''}
+            {effectiveSets.length} / {targetSets} series
+            {effectiveSets.length >= targetSets && ' · ✓'}
           </p>
         </button>
 
@@ -77,8 +84,8 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
               type="button"
               onClick={() => setShowHistory(!showHistory)}
               className={`flex items-center justify-center w-7 h-7 rounded-full transition-colors ${showHistory
-                  ? 'bg-secondary/10 text-secondary'
-                  : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-secondary/10 text-secondary'
+                : 'text-muted-foreground hover:text-foreground'
                 }`}
             >
               <History size={14} />

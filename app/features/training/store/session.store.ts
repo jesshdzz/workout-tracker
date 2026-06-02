@@ -27,6 +27,9 @@ export type SessionExercise = {
   exerciseId: string
   exerciseName: string
   order: number
+  targetSets: number
+  targetReps: string
+  targetRir: number | null
 }
 
 type SessionStore = {
