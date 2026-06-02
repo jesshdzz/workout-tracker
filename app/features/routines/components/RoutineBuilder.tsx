@@ -72,7 +72,7 @@ function SortableExerciseRow({
                             type="number"
                             inputMode="numeric"
                             value={config.targetSets}
-                            onChange={e => onChange({ targetSets: parseInt(e.target.value) || 1 })}
+                            onChange={e => onChange({ targetSets: parseInt(e.target.value) })}
                             min="1"
                             max="10"
                             className="w-full px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-center text-sm focus:outline-none focus:ring-1 focus:ring-primary"
