@@ -109,18 +109,16 @@ export const workoutService = {
 
   async finishSession(sessionId: string, durationSeconds: number): Promise<Result<Session>> {
     if (navigator.onLine) await drainQueue()
-    enqueue({
-      type: 'complete_session',
-      payload: {
-        id: sessionId,
-        completed: true,
-        duration_s: durationSeconds,
-      },
-    })
 
-    if (navigator.onLine) await drainQueue()
+    const { data, error } = await sessionsRepository.complete(sessionId, { duration_s: durationSeconds })
 
-    return { data: null as any, error: null }
+    const queue = getQueue()
+    queue
+      .filter(op => op.type === 'complete_session' && op.payload.id === sessionId)
+      .forEach(op => removeFromQueue(op.opId))
+
+    if (error) return { data: null, error }
+    return { data, error: null }
   },
 
   async getActiveSession(userId: string): Promise<Result<Session | null>> {
