@@ -29,6 +29,10 @@ export type PendingSet = {
   technique: 'normal' | 'rest_pause' | 'drop_set' | 'failure'
   rir: number
   setType: 'warmup' | 'effective'
+  restPauseReps?: string
+  dropWeight?: string
+  dropReps?: string
+  restAfterSeconds?: number
 }
 
 export type SessionExercise = {
@@ -45,6 +49,8 @@ type SessionStore = {
   sessionId: string | null
   sessionName: string | null
   routineId: string | null
+  weekNumber: number | null
+  blockNumber: number | null
   currentExercise: Exercise | null
   sets: ActiveSet[]
   isResting: boolean
@@ -55,7 +61,13 @@ type SessionStore = {
   pendingSets: Record<string, PendingSet[]>
 
   // Acciones
-  initSession: (sessionId: string, name?: string | null, routineId?: string | null) => void
+  initSession: (
+    sessionId: string,
+    name?: string | null,
+    routineId?: string | null,
+    weekNumber?: number | null,
+    blockNumber?: number | null
+  ) => void
   setCurrentExercise: (exercise: Exercise) => void
   addSet: (set: ActiveSet) => void
   markPR: (setNumber: number, exerciseId: string) => void
@@ -79,6 +91,8 @@ const initialState = {
   sessionId: null,
   sessionName: null,
   routineId: null,
+  weekNumber: null,
+  blockNumber: null,
   currentExercise: null,
   sets: [],
   isResting: false,
@@ -94,7 +108,16 @@ export const useSessionStore = create<SessionStore>()(
     (set) => ({
       ...initialState,
 
-      initSession: (sessionId: string, name?: string | null, routineId?: string | null) => set({ sessionId, sessionName: name, routineId: routineId ?? null, startedAt: Date.now(), elapsedSeconds: 0 }),
+      initSession: (sessionId, name, routineId, weekNumber, blockNumber) =>
+        set({
+          sessionId,
+          sessionName: name,
+          routineId: routineId ?? null,
+          weekNumber: weekNumber ?? null,
+          blockNumber: blockNumber ?? null,
+          startedAt: Date.now(),
+          elapsedSeconds: 0,
+        }),
 
       setCurrentExercise: (exercise) => set({ currentExercise: exercise }),
 
@@ -220,6 +243,8 @@ export const useSessionStore = create<SessionStore>()(
       sessionId: state.sessionId,
       sessionName: state.sessionName,
       routineId: state.routineId,
+      weekNumber: state.weekNumber,
+      blockNumber: state.blockNumber,
       sets: state.sets,
       startedAt: state.startedAt,
       elapsedSeconds: state.elapsedSeconds,

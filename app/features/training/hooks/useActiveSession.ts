@@ -50,7 +50,13 @@ export function useActiveSession() {
     const result = await workoutService.startSession(user.id, options)
     if (result.error || !result.data) return null
 
-    initSession(result.data.id, options?.name ?? 'Sesión sin nombre')
+    initSession(
+      result.data.id,
+      options?.name ?? 'Sesión sin nombre',
+      options?.routineId,
+      result.data.week_number,
+      result.data.block_number
+    )
     return result.data
   }
 
@@ -147,6 +153,7 @@ export function useActiveSession() {
       dropReps: updates.dropReps,
       rirPerceived: updates.rirPerceived,
       technique: updates.technique,
+      setType: updates.setType,
     })
   }
 

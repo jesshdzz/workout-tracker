@@ -1,3 +1,4 @@
+import { supabase } from '~/lib/supabase'
 import { sessionsRepository } from '~/repositories/sessions.repository'
 import { setsRepository, type SetWithSession } from '~/repositories/sets.repository'
 import { recordsRepository } from '~/repositories/records.repository'
@@ -38,13 +39,33 @@ export const workoutService = {
     const active = await sessionsRepository.findActive(userId)
     if (active.data) return { data: active.data, error: null }
 
+    let weekNumber = options?.weekNumber ?? null
+    let blockNumber = options?.blockNumber ?? null
+
+    if (weekNumber === null) {
+      // Intentar obtener de user_program_state
+      const { data: progState } = await supabase
+        .from('user_program_state')
+        .select('current_week, current_block')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (progState) {
+        weekNumber = progState.current_week
+        blockNumber = progState.current_block
+      } else {
+        weekNumber = 1
+        blockNumber = 1
+      }
+    }
+
     return sessionsRepository.create({
       user_id: userId,
       routine_id: options?.routineId ?? null,
       name: options?.name ?? null,
       date: new Date().toISOString().split('T')[0],
-      week_number: options?.weekNumber ?? null,
-      block_number: options?.blockNumber ?? null,
+      week_number: weekNumber,
+      block_number: blockNumber,
       completed: false,
     })
   },
@@ -148,9 +169,20 @@ export const workoutService = {
       dropReps?: number
       rirPerceived?: number
       technique?: string
+      setType?: 'warmup' | 'effective'
     }
   ): Promise<Result<Set>> {
-    return setsRepository.update(setId, updates)
+    const mappedUpdates: any = {}
+    if (updates.weight !== undefined) mappedUpdates.weight = updates.weight
+    if (updates.reps !== undefined) mappedUpdates.reps = updates.reps
+    if (updates.restPauseReps !== undefined) mappedUpdates.rest_pause_reps = updates.restPauseReps
+    if (updates.dropWeight !== undefined) mappedUpdates.drop_weight = updates.dropWeight
+    if (updates.dropReps !== undefined) mappedUpdates.drop_reps = updates.dropReps
+    if (updates.rirPerceived !== undefined) mappedUpdates.rir_perceived = updates.rirPerceived
+    if (updates.technique !== undefined) mappedUpdates.technique = updates.technique
+    if (updates.setType !== undefined) mappedUpdates.set_type = updates.setType
+
+    return setsRepository.update(setId, mappedUpdates)
   },
 
   async getExerciseHistory(exerciseId: string, userId: string, currentSessionId: string | null): Promise<Result<SetWithSession[]>> {
