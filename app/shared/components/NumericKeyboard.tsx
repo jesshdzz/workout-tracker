@@ -63,8 +63,17 @@ export function NumericKeyboard({ value, onChange, onClose, label, decimal = tru
             {onClose && (
                 <button
                     type="button"
-                    onPointerDown={(e) => e.preventDefault()}
-                    onClick={() => onClose()}
+                    onPointerDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                    }}
+                    onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setTimeout(() => {
+                            onClose()
+                        }, 100)
+                    }}
                     className="w-full py-4 text-sm font-medium transition-colors text-primary-foreground bg-primary active:bg-primary/90"
                 >
                     Listo

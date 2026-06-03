@@ -52,8 +52,8 @@ export function useActiveSession() {
 
     initSession(
       result.data.id,
-      options?.name ?? 'Sesión sin nombre',
-      options?.routineId,
+      result.data.name ?? options?.name ?? 'Sesión sin nombre',
+      result.data.routine_id ?? options?.routineId,
       result.data.week_number,
       result.data.block_number
     )

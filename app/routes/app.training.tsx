@@ -80,6 +80,26 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
         const { addExerciseToSession } = useSessionStore.getState()
         routine.routine_exercises.forEach((re, i) => {
             if (re.exercises) {
+                let sets: any[] = []
+                let warmupSets = 0
+                let technique = 'normal'
+                let restAfterSeconds = 90
+
+                if (re.notes) {
+                    try {
+                        const parsed = JSON.parse(re.notes)
+                        if (Array.isArray(parsed.sets)) {
+                            sets = parsed.sets
+                        } else {
+                            warmupSets = parsed.warmupSets ?? 0
+                            technique = parsed.technique ?? 'normal'
+                            restAfterSeconds = parsed.restAfterSeconds ?? 90
+                        }
+                    } catch (e) {
+                        // notes is raw text, ignore parsing
+                    }
+                }
+
                 addExerciseToSession({
                     exerciseId: re.exercises.id,
                     exerciseName: re.exercises.name_es ?? re.exercises.name,
@@ -88,6 +108,10 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                     targetReps: re.target_reps ?? '8-12',
                     targetRir: re.target_rir ?? null,
                     intensityPct: re.intensity_pct ?? null,
+                    warmupSets,
+                    technique,
+                    restAfterSeconds,
+                    sets: sets.length > 0 ? sets : undefined,
                 })
             }
         })
@@ -110,10 +134,14 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                 exConfigs.map((ex, i) => ({
                     exercise_id: ex.exerciseId,
                     sort_order: i,
-                    target_sets: ex.targetSets,
-                    target_reps: ex.targetReps,
-                    target_rir: ex.targetRir,
-                    intensity_pct: ex.intensityPct,
+                    target_sets: ex.sets.length,
+                    target_reps: ex.sets[0]?.reps ?? '8-12',
+                    target_rir: null,
+                    intensity_pct: null,
+                    notes: JSON.stringify({
+                        sets: ex.sets,
+                        notesText: ex.notesText ?? '',
+                    }),
                 }))
             )
         } else {
@@ -122,10 +150,14 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                 exConfigs.map((ex, i) => ({
                     exercise_id: ex.exerciseId,
                     sort_order: i,
-                    target_sets: ex.targetSets,
-                    target_reps: ex.targetReps,
-                    target_rir: ex.targetRir,
-                    intensity_pct: ex.intensityPct,
+                    target_sets: ex.sets.length,
+                    target_reps: ex.sets[0]?.reps ?? '8-12',
+                    target_rir: null,
+                    intensity_pct: null,
+                    notes: JSON.stringify({
+                        sets: ex.sets,
+                        notesText: ex.notesText ?? '',
+                    }),
                 }))
             )
         }
@@ -140,14 +172,65 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
         return (
             <RoutineBuilder
                 initialName={routine?.name}
-                initialExercises={routine?.routine_exercises.map(re => ({
-                    exerciseId: re.exercises?.id ?? '',
-                    exerciseName: re.exercises?.name_es ?? re.exercises?.name ?? '',
-                    targetSets: re.target_sets ?? 3,
-                    targetReps: re.target_reps ?? '8-12',
-                    targetRir: re.target_rir,
-                    intensityPct: re.intensity_pct,
-                }))}
+                initialExercises={routine?.routine_exercises.map(re => {
+                    let sets: any[] = []
+                    let notesText = ''
+                    if (re.notes) {
+                        try {
+                            const parsed = JSON.parse(re.notes)
+                            if (Array.isArray(parsed.sets)) {
+                                sets = parsed.sets
+                            } else {
+                                const warmupCount = parsed.warmupSets ?? 0
+                                const rest = parsed.restAfterSeconds ?? 90
+                                const tech = parsed.technique ?? 'normal'
+                                const repsStr = re.target_reps ?? '8-12'
+                                const totalSets = re.target_sets ?? 3
+
+                                for (let w = 0; w < warmupCount; w++) {
+                                    sets.push({
+                                        setType: 'warmup',
+                                        reps: repsStr,
+                                        technique: 'normal',
+                                        restAfterSeconds: rest
+                                    })
+                                }
+                                const effectiveCount = Math.max(1, totalSets - warmupCount)
+                                for (let e = 0; e < effectiveCount; e++) {
+                                    sets.push({
+                                        setType: 'effective',
+                                        reps: repsStr,
+                                        technique: tech,
+                                        restAfterSeconds: rest
+                                    })
+                                }
+                            }
+                            notesText = parsed.notesText ?? ''
+                        } catch (e) {
+                            notesText = re.notes
+                        }
+                    }
+
+                    if (sets.length === 0) {
+                        const totalSets = re.target_sets ?? 3
+                        const repsStr = re.target_reps ?? '8-12'
+                        for (let e = 0; e < totalSets; e++) {
+                            sets.push({
+                                setType: 'effective',
+                                reps: repsStr,
+                                technique: 'normal',
+                                restAfterSeconds: 90
+                            })
+                        }
+                    }
+
+                    return {
+                        exerciseId: re.exercises?.id ?? '',
+                        exerciseName: re.exercises?.name_es ?? re.exercises?.name ?? '',
+                        sets,
+                        notesText,
+                    }
+                })}
                 allExercises={exercises}
                 onSave={handleSaveRoutine}
                 onCancel={() => setModal(null)}

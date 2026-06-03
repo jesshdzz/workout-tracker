@@ -43,7 +43,17 @@ export type SessionExercise = {
   targetReps: string
   targetRir: number | null
   intensityPct: number | null
+  warmupSets?: number
+  technique?: string
+  restAfterSeconds?: number
+  sets?: {
+    setType: 'warmup' | 'effective'
+    reps: string
+    technique: 'normal' | 'rest_pause' | 'drop_set' | 'failure'
+    restAfterSeconds: number
+  }[]
 }
+
 
 type SessionStore = {
   sessionId: string | null
@@ -152,12 +162,50 @@ export const useSessionStore = create<SessionStore>()(
       reset: () => set(initialState),
 
       addExerciseToSession: (exercise) =>
-        set((state) => ({
-          sessionExercises: [
-            ...state.sessionExercises,
-            { ...exercise, order: state.sessionExercises.length },
-          ],
-        })),
+        set((state) => {
+          let initialPending: PendingSet[] = []
+
+          if (exercise.sets && exercise.sets.length > 0) {
+            initialPending = exercise.sets.map((s) => ({
+              weight: '',
+              reps: s.reps ?? '',
+              technique: s.technique ?? 'normal',
+              rir: 2,
+              setType: s.setType,
+              restAfterSeconds: s.restAfterSeconds ?? 90,
+              restPauseReps: '',
+              dropWeight: '',
+              dropReps: '',
+            }))
+          } else {
+            const warmupCount = exercise.warmupSets ?? 0
+            const effCount = exercise.targetSets ?? 3
+            const totalCount = warmupCount + effCount
+
+            initialPending = Array.from({ length: totalCount }, (_, i) => ({
+              weight: '',
+              reps: '',
+              technique: (exercise.technique as any) ?? 'normal',
+              rir: 2,
+              setType: i < warmupCount ? ('warmup' as const) : ('effective' as const),
+              restAfterSeconds: exercise.restAfterSeconds ?? 90,
+              restPauseReps: '',
+              dropWeight: '',
+              dropReps: '',
+            }))
+          }
+
+          return {
+            sessionExercises: [
+              ...state.sessionExercises,
+              { ...exercise, order: state.sessionExercises.length },
+            ],
+            pendingSets: {
+              ...state.pendingSets,
+              [exercise.exerciseId]: initialPending,
+            },
+          }
+        }),
 
       reorderExercises: (from, to) =>
         set((state) => {

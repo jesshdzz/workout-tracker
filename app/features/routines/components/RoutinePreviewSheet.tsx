@@ -60,24 +60,64 @@ export function RoutinePreviewSheet({ routine, onStart, onEdit, onClose }: Props
                 </div>
 
                 {/* Lista de ejercicios */}
-                <div className="flex-1 px-4 py-3 space-y-2 overflow-y-auto">
+                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto">
                     {routine.routine_exercises.map((re, i) => {
                         const ex = re.exercises
                         if (!ex) return null
+
+                        let sets: any[] = []
+                        let notesText = ''
+                        if (re.notes) {
+                            try {
+                                const parsed = JSON.parse(re.notes)
+                                if (Array.isArray(parsed.sets)) {
+                                    sets = parsed.sets
+                                }
+                                notesText = parsed.notesText ?? ''
+                            } catch (e) {}
+                        }
+
                         return (
-                            <div key={re.id} className="flex items-center gap-3">
-                                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted shrink-0">
+                            <div key={re.id} className="flex items-start gap-3">
+                                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted shrink-0 mt-0.5">
                                     <span className="text-xs font-bold text-muted-foreground">{i + 1}</span>
                                 </div>
                                 <div className="flex-1">
-                                    <p className="text-sm font-medium text-foreground">
-                                        {re.target_sets && `${re.target_sets} × `}{ex.name_es ?? ex.name}
+                                    <p className="text-sm font-semibold text-foreground">
+                                        {ex.name_es ?? ex.name}
                                     </p>
-                                    {re.target_reps && (
-                                        <p className="text-xs text-muted-foreground">
-                                            {re.target_reps} reps
-                                            {re.target_rir !== null && ` · RIR ${re.target_rir}`}
-                                            {re.intensity_pct && ` · ${Math.round(re.intensity_pct * 100)}%`}
+                                    {sets.length > 0 ? (
+                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                            {sets.map((s, idx) => {
+                                                const isWarmup = s.setType === 'warmup'
+                                                const techName = s.technique === 'failure' ? 'F' : s.technique === 'rest_pause' ? 'RP' : s.technique === 'drop_set' ? 'DS' : ''
+                                                const effectiveIdx = sets.slice(0, idx).filter(x => x.setType === 'effective').length + (s.setType === 'effective' ? 1 : 0)
+                                                return (
+                                                    <span
+                                                        key={idx}
+                                                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border ${
+                                                            isWarmup
+                                                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                                : 'bg-primary/10 text-primary border-primary/20'
+                                                        }`}
+                                                    >
+                                                        {isWarmup ? 'W' : effectiveIdx}: {s.reps}{techName ? ` (${techName})` : ''}
+                                                    </span>
+                                                )
+                                            })}
+                                        </div>
+                                    ) : (
+                                        re.target_reps && (
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                {re.target_sets && `${re.target_sets} × `}{re.target_reps} reps
+                                                {re.target_rir !== null && ` · RIR ${re.target_rir}`}
+                                                {re.intensity_pct && ` · ${Math.round(re.intensity_pct * 100)}%`}
+                                            </p>
+                                        )
+                                    )}
+                                    {notesText && (
+                                        <p className="text-[10px] text-muted-foreground mt-1 italic">
+                                            💡 {notesText}
                                         </p>
                                     )}
                                 </div>

@@ -16,6 +16,8 @@ export type RoutineWithExercises = Routine & {
     target_reps: string | null
     target_rir: number | null
     intensity_pct: number | null
+    notes: string | null
+    set_type: string | null
     exercises: {
       id: string
       name: string
@@ -40,6 +42,8 @@ export class RoutinesRepository extends BaseRepository {
           target_reps,
           target_rir,
           intensity_pct,
+          notes,
+          set_type,
           exercises(id, name, name_es, slug, is_compound)
         )
       `)
@@ -90,6 +94,8 @@ export class RoutinesRepository extends BaseRepository {
           target_reps,
           target_rir,
           intensity_pct,
+          notes,
+          set_type,
           exercises(id, name, name_es, slug, is_compound)
         )
       `)
