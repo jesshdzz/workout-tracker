@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Route } from './+types/app.training'
 import { requireAuth } from '~/lib/auth'
 import { exercisesRepository } from '~/repositories/exercises.repository'
@@ -54,6 +54,20 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const [showPicker, setShowPicker] = useState(false)
     const [inputName, setInputName] = useState('')
     const [currentRoutine, setCurrentRoutine] = useState<RoutineWithExercises | null>(null)
+
+    useEffect(() => {
+        if (!routineId) {
+            setCurrentRoutine(null)
+            return
+        }
+        const loadRoutine = async () => {
+            const result = await routinesRepository.findById(routineId)
+            if (result.data) {
+                setCurrentRoutine(result.data)
+            }
+        }
+        loadRoutine()
+    }, [routineId])
 
 
     const handleStart = async () => {
