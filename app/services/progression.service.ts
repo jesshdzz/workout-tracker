@@ -39,7 +39,7 @@ export const progressionService = {
         const config = getBlockConfig(week)
 
         // 3. Calcular peso objetivo
-        const targetWeight = calcWorkingWeight(rm, config.intensityPct)
+        const targetWeight = calcWorkingWeight(rm, config.intensityPct, 'kg')
 
         return {
             data: {

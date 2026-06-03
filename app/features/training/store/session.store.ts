@@ -23,6 +23,14 @@ export type ActiveSet = {
   isPR: boolean
 }
 
+export type PendingSet = {
+  weight: string
+  reps: string
+  technique: 'normal' | 'rest_pause' | 'drop_set' | 'failure'
+  rir: number
+  setType: 'warmup' | 'effective'
+}
+
 export type SessionExercise = {
   exerciseId: string
   exerciseName: string
@@ -44,9 +52,10 @@ type SessionStore = {
   elapsedSeconds: number
   startedAt: number | null
   sessionExercises: SessionExercise[]
+  pendingSets: Record<string, PendingSet[]>
 
   // Acciones
-  initSession: (sessionId: string, name?: string | null) => void
+  initSession: (sessionId: string, name?: string | null, routineId?: string | null) => void
   setCurrentExercise: (exercise: Exercise) => void
   addSet: (set: ActiveSet) => void
   markPR: (setNumber: number, exerciseId: string) => void
@@ -60,6 +69,10 @@ type SessionStore = {
   reorderExercises: (from: number, to: number) => void
   updateSet: (id: string, updates: Partial<ActiveSet>) => void
   removeSet: (id: string) => void
+  setPendingSets: (exerciseId: string, sets: PendingSet[]) => void
+  updatePendingSet: (exerciseId: string, index: number, updates: Partial<PendingSet>) => void
+  addPendingSetRow: (exerciseId: string, set: PendingSet) => void
+  removePendingSetRow: (exerciseId: string, index: number) => void
 }
 
 const initialState = {
@@ -73,6 +86,7 @@ const initialState = {
   elapsedSeconds: 0,
   startedAt: null,
   sessionExercises: [],
+  pendingSets: {},
 }
 
 export const useSessionStore = create<SessionStore>()(
@@ -149,7 +163,57 @@ export const useSessionStore = create<SessionStore>()(
             .filter((ex) => ex.exerciseId !== exerciseId)
             .map((ex, i) => ({ ...ex, order: i })),
           sets: state.sets.filter((s) => s.exerciseId !== exerciseId),
+          pendingSets: (() => {
+            const copy = { ...state.pendingSets }
+            delete copy[exerciseId]
+            return copy
+          })()
         })),
+
+      setPendingSets: (exerciseId, pendingSetsList) =>
+        set((state) => ({
+          pendingSets: {
+            ...state.pendingSets,
+            [exerciseId]: pendingSetsList,
+          },
+        })),
+
+      updatePendingSet: (exerciseId, index, updates) =>
+        set((state) => {
+          const exerciseSets = state.pendingSets[exerciseId] || []
+          const updated = exerciseSets.map((s, i) =>
+            i === index ? { ...s, ...updates } : s
+          )
+          return {
+            pendingSets: {
+              ...state.pendingSets,
+              [exerciseId]: updated,
+            },
+          }
+        }),
+
+      addPendingSetRow: (exerciseId, newSet) =>
+        set((state) => {
+          const exerciseSets = state.pendingSets[exerciseId] || []
+          return {
+            pendingSets: {
+              ...state.pendingSets,
+              [exerciseId]: [...exerciseSets, newSet],
+            },
+          }
+        }),
+
+      removePendingSetRow: (exerciseId, index) =>
+        set((state) => {
+          const exerciseSets = state.pendingSets[exerciseId] || []
+          const filtered = exerciseSets.filter((_, i) => i !== index)
+          return {
+            pendingSets: {
+              ...state.pendingSets,
+              [exerciseId]: filtered,
+            },
+          }
+        }),
     }), {
     name: 'active-session', // nombre de la clave en localStorage
     partialize: (state) => ({       // solo persiste lo necesario
@@ -160,6 +224,7 @@ export const useSessionStore = create<SessionStore>()(
       startedAt: state.startedAt,
       elapsedSeconds: state.elapsedSeconds,
       sessionExercises: state.sessionExercises,
+      pendingSets: state.pendingSets,
     }),
   })
 )

@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp, Info, History, Plus, Trash2, MoreHorizontal } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useActiveSession } from '../hooks/useActiveSession'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
-import { useSessionStore } from '../store/session.store'
+import { useSessionStore, type PendingSet } from '../store/session.store'
 import { useKeyboard } from '../context/keyboardContext'
 import { formatDateShort } from '~/core/utils/formatters'
 import type { Database } from '~/core/types/database.types'
@@ -190,19 +190,10 @@ function SetRow({
   )
 }
 
-// Estado local de una serie pendiente (antes de completarse)
-type PendingSet = {
-  weight: string
-  reps: string
-  technique: Technique
-  rir: number
-  setType: 'warmup' | 'effective'
-}
-
 export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
   const { logSet, setsForExercise, deleteSetFromStore } = useActiveSession()
   const { sessionId, sessionExercises } = useSessionStore()
-  const { history } = useExerciseHistory(exercise.id, sessionId)
+  const { history, loading: loadingHistory } = useExerciseHistory(exercise.id, sessionId)
   const keyboard = useKeyboard()
 
   const [expanded, setExpanded] = useState(true)
@@ -218,31 +209,60 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
   // Series precargadas (vacías) basadas en targetSets
   const prevSets = history?.sets.filter(s => s.setType !== 'warmup') ?? []
 
-  // Estado local de series pendientes
-  const totalRows = Math.max(targetSets, completedSets.length + 1)
-  const [pendingSets, setPendingSets] = useState<PendingSet[]>(
-    Array.from({ length: totalRows }, (_, i) => ({
-      weight: prevSets[i]?.weight.toString() ?? '',
-      reps: prevSets[i]?.reps.toString() ?? '',
-      technique: 'normal' as Technique,
-      rir: 2,
-      setType: i === 0 ? 'warmup' : 'effective',
-    }))
-  )
+  // Pending sets from global store
+  const storePendingSets = useSessionStore(state => state.pendingSets[exercise.id])
+  const setPendingSets = useSessionStore(state => state.setPendingSets)
+  const updatePendingSet = useSessionStore(state => state.updatePendingSet)
+  const addPendingSetRow = useSessionStore(state => state.addPendingSetRow)
+  const removePendingSetRow = useSessionStore(state => state.removePendingSetRow)
 
-  const updatePending = (i: number, updates: Partial<PendingSet>) => {
-    setPendingSets(prev => prev.map((s, idx) => idx === i ? { ...s, ...updates } : s))
-  }
+  const pendingSets = storePendingSets || []
+
+  // Inicializa las series pendientes cuando termine de cargar el historial
+  useEffect(() => {
+    if (!loadingHistory && !storePendingSets) {
+      const initialRows = Math.max(targetSets, completedSets.length + 1)
+      const initial: PendingSet[] = Array.from({ length: initialRows }, (_, i) => ({
+        weight: prevSets[i]?.weight.toString() ?? '',
+        reps: prevSets[i]?.reps.toString() ?? '',
+        technique: 'normal' as Technique,
+        rir: 2,
+        setType: i === 0 ? 'warmup' : 'effective',
+      }))
+      setPendingSets(exercise.id, initial)
+    }
+  }, [loadingHistory, history, exercise.id, storePendingSets, targetSets, completedSets.length, setPendingSets])
+
+  // Expande automáticamente el array de series pendientes si el número de series completadas crece
+  useEffect(() => {
+    if (storePendingSets && completedSets.length + 1 > storePendingSets.length) {
+      const diff = completedSets.length + 1 - storePendingSets.length
+      const updated = [...storePendingSets]
+      for (let i = 0; i < diff; i++) {
+        const nextIdx = storePendingSets.length + i
+        const lastPrev = prevSets[nextIdx]
+        updated.push({
+          weight: lastPrev?.weight.toString() ?? '',
+          reps: lastPrev?.reps.toString() ?? '',
+          technique: 'normal' as Technique,
+          rir: 2,
+          setType: 'effective' as const,
+        })
+      }
+      setPendingSets(exercise.id, updated)
+    }
+  }, [completedSets.length, storePendingSets, exercise.id, history, setPendingSets])
 
   const addRow = () => {
-    const lastPrev = prevSets[pendingSets.length]
-    setPendingSets(prev => [...prev, {
+    const nextIdx = pendingSets.length
+    const lastPrev = prevSets[nextIdx]
+    addPendingSetRow(exercise.id, {
       weight: lastPrev?.weight.toString() ?? '',
       reps: lastPrev?.reps.toString() ?? '',
       technique: 'normal',
       rir: 2,
       setType: 'effective',
-    }])
+    })
   }
 
   const handleComplete = async (rowIndex: number) => {
@@ -377,50 +397,56 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
             </div>
 
             {/* Filas de series */}
-            <div className="divide-y divide-border/50">
-              {pendingSets.map((pending, i) => {
-                const completed = completedSets[i]
-                const isCompleted = !!completed
+            {!storePendingSets && loadingHistory ? (
+              <div className="flex justify-center items-center py-6">
+                <div className="w-5 h-5 border-2 rounded-full animate-spin border-primary border-t-transparent" />
+              </div>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {pendingSets.map((pending, i) => {
+                  const completed = completedSets[i]
+                  const isCompleted = !!completed
 
-                return (
-                  <SetRow
-                    key={i}
-                    index={i}
-                    setNumber={pending.setType === 'warmup' ? 0 : i}
-                    setType={pending.setType}
-                    weight={isCompleted ? completed.weight.toString() : pending.weight}
-                    reps={isCompleted ? completed.reps.toString() : pending.reps}
-                    technique={isCompleted ? completed.technique : pending.technique}
-                    rir={isCompleted ? completed.rirPerceived : pending.rir}
-                    prevLabel={getPrevLabel(i)}
-                    isCompleted={isCompleted}
-                    isPR={isCompleted && completed.isPR}
-                    weightUnit={weightUnit}
-                    onTapWeight={() => keyboard.openKeyboard({
-                      key: `weight-${exercise.id}-${i}`,
-                      value: pending.weight,
-                      label: `Peso — Serie ${i + 1}`,
-                      decimal: true,
-                      onCommit: (v) => updatePending(i, { weight: v }),
-                    })}
-                    onTapReps={() => keyboard.openKeyboard({
-                      key: `reps-${exercise.id}-${i}`,
-                      value: pending.reps,
-                      label: `Reps — Serie ${i + 1}`,
-                      decimal: false,
-                      onCommit: (v) => updatePending(i, { reps: v }),
-                    })}
-                    onComplete={() => handleComplete(i)}
-                    onDelete={() => {
-                      if (isCompleted) deleteSetFromStore(completed.id)
-                      else setPendingSets(prev => prev.filter((_, idx) => idx !== i))
-                    }}
-                    onTechChange={(t) => updatePending(i, { technique: t })}
-                    onRirChange={(r) => updatePending(i, { rir: r })}
-                  />
-                )
-              })}
-            </div>
+                  return (
+                    <SetRow
+                      key={i}
+                      index={i}
+                      setNumber={pending.setType === 'warmup' ? 0 : i}
+                      setType={pending.setType}
+                      weight={isCompleted ? completed.weight.toString() : pending.weight}
+                      reps={isCompleted ? completed.reps.toString() : pending.reps}
+                      technique={isCompleted ? completed.technique : pending.technique}
+                      rir={isCompleted ? completed.rirPerceived : pending.rir}
+                      prevLabel={getPrevLabel(i)}
+                      isCompleted={isCompleted}
+                      isPR={isCompleted && completed.isPR}
+                      weightUnit={weightUnit}
+                      onTapWeight={() => keyboard.openKeyboard({
+                        key: `weight-${exercise.id}-${i}`,
+                        value: pending.weight,
+                        label: `Peso — Serie ${i + 1}`,
+                        decimal: true,
+                        onCommit: (v) => updatePendingSet(exercise.id, i, { weight: v }),
+                      })}
+                      onTapReps={() => keyboard.openKeyboard({
+                        key: `reps-${exercise.id}-${i}`,
+                        value: pending.reps,
+                        label: `Reps — Serie ${i + 1}`,
+                        decimal: false,
+                        onCommit: (v) => updatePendingSet(exercise.id, i, { reps: v }),
+                      })}
+                      onComplete={() => handleComplete(i)}
+                      onDelete={() => {
+                        if (isCompleted) deleteSetFromStore(completed.id)
+                        else removePendingSetRow(exercise.id, i)
+                      }}
+                      onTechChange={(t) => updatePendingSet(exercise.id, i, { technique: t })}
+                      onRirChange={(r) => updatePendingSet(exercise.id, i, { rir: r })}
+                    />
+                  )
+                })}
+              </div>
+            )}
 
             {/* Añadir serie */}
             <button
