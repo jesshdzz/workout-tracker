@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronUp, Info, History, Plus, Trash2, MoreHorizontal } from 'lucide-react'
+import { ChevronDown, ChevronUp, Info, History, Plus, Trash2 } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useActiveSession } from '../hooks/useActiveSession'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
-import { useSessionStore, type PendingSet } from '../store/session.store'
+import { useSessionStore, type PendingSet, type ActiveSet } from '../store/session.store'
 import { useKeyboard } from '../context/keyboardContext'
 import { formatDateShort } from '~/core/utils/formatters'
 import type { Database } from '~/core/types/database.types'
 import type { WeightUnit } from '~/core/types/common.types'
+import { useAuth } from '~/features/auth/AuthProvider'
+import { progressionService } from '~/services/progression.service'
+import { SetRow } from './SetRow'
 
 type Exercise = Database['public']['Tables']['exercises']['Row']
 type Technique = 'normal' | 'rest_pause' | 'drop_set' | 'failure'
@@ -19,189 +22,19 @@ type Props = {
   onRemove: () => void
 }
 
-// Fila de serie — compacta pero completa
-type SetRowProps = {
-  index: number
-  setNumber: number
-  setType: 'warmup' | 'effective'
-  weight: string
-  reps: string
-  technique: Technique
-  rir: number
-  prevLabel: string | null   // "56 kg × 13" de sesión anterior
-  isCompleted: boolean
-  isPR: boolean
-  weightUnit: WeightUnit
-  onTapWeight: () => void
-  onTapReps: () => void
-  onComplete: () => void
-  onDelete: () => void
-  onTechChange: (t: Technique) => void
-  onRirChange: (r: number) => void
-}
-
-function SetRow({
-  setNumber, setType, weight, reps, technique, rir,
-  prevLabel, isCompleted, isPR, weightUnit,
-  onTapWeight, onTapReps, onComplete, onDelete,
-  onTechChange, onRirChange,
-}: SetRowProps) {
-  const [showOptions, setShowOptions] = useState(false)
-
-  const TECHNIQUES: { value: Technique; short: string }[] = [
-    { value: 'normal', short: 'N' },
-    { value: 'failure', short: 'F' },
-    { value: 'rest_pause', short: 'RP' },
-    { value: 'drop_set', short: 'DS' },
-  ]
-
-  return (
-    <div>
-      <div className={`flex items-center gap-1.5 px-3 py-2 transition-colors ${isCompleted ? 'bg-accent/5' : ''
-        } ${isPR ? 'bg-primary/5' : ''}`}>
-
-        {/* Número de serie */}
-        <div className="text-center w-7 shrink-0">
-          <span className={`text-xs font-bold ${setType === 'warmup'
-            ? 'text-amber-500'
-            : isCompleted
-              ? 'text-accent'
-              : 'text-muted-foreground'
-            }`}>
-            {setType === 'warmup' ? 'W' : setNumber}
-          </span>
-        </div>
-
-        {/* Anterior */}
-        <div className="flex-1 min-w-0">
-          <span className="text-xs truncate text-muted-foreground">
-            {prevLabel ?? '—'}
-          </span>
-        </div>
-
-        {/* Peso */}
-        <button
-          type="button"
-          onPointerDown={(e) => { e.preventDefault(); onTapWeight() }}
-          disabled={isCompleted}
-          className={`w-16 py-1.5 rounded-lg text-sm font-mono font-medium text-center transition-colors ${isCompleted
-            ? 'bg-transparent text-foreground'
-            : weight
-              ? 'bg-muted text-foreground'
-              : 'bg-muted text-muted-foreground'
-            }`}
-        >
-          {weight || '—'}
-        </button>
-
-        {/* Reps */}
-        <button
-          type="button"
-          onPointerDown={(e) => { e.preventDefault(); onTapReps() }}
-          disabled={isCompleted}
-          className={`w-14 py-1.5 rounded-lg text-sm font-mono font-medium text-center transition-colors ${isCompleted
-            ? 'bg-transparent text-foreground'
-            : reps
-              ? 'bg-muted text-foreground'
-              : 'bg-muted text-muted-foreground'
-            }`}
-        >
-          {reps || '—'}
-        </button>
-
-        {/* Completar / PR indicator */}
-        <button
-          type="button"
-          onClick={onComplete}
-          disabled={!weight || !reps}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isCompleted
-            ? isPR
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-accent text-accent-foreground'
-            : 'bg-muted text-muted-foreground disabled:opacity-30'
-            }`}
-        >
-          {isCompleted ? (isPR ? '🏆' : '✓') : '✓'}
-        </button>
-      </div>
-
-      {/* Panel de opciones expandible (técnica, RIR, eliminar) */}
-      {!isCompleted && showOptions && (
-        <div className="px-3 pb-2 space-y-2 bg-muted/30">
-          {/* Técnica */}
-          <div className="flex gap-1">
-            {TECHNIQUES.map(t => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => onTechChange(t.value)}
-                className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${technique === t.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-card text-muted-foreground border border-border'
-                  }`}
-              >
-                {t.short}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={onDelete}
-              className="px-2 py-1 text-xs border rounded-md bg-card text-destructive border-border"
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
-
-          {/* RIR — solo si no es al fallo */}
-          {technique !== 'failure' && (
-            <div className="flex gap-1">
-              <span className="self-center mr-1 text-xs text-muted-foreground">RIR</span>
-              {[0, 1, 2, 3, 4].map(r => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => onRirChange(r)}
-                  className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${rir === r
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground border border-border'
-                    }`}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Toggle opciones */}
-      {!isCompleted && (
-        <button
-          type="button"
-          onClick={() => setShowOptions(!showOptions)}
-          className="w-full flex items-center justify-center py-0.5 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <div className="w-8 h-px bg-border" />
-          <MoreHorizontal size={12} className="mx-1.5" />
-          <div className="w-8 h-px bg-border" />
-        </button>
-      )}
-    </div>
-  )
-}
-
 export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
-  const { logSet, setsForExercise, deleteSetFromStore } = useActiveSession()
-  const { sessionId, sessionExercises } = useSessionStore()
+  const { user } = useAuth()
+  const { logSet, setsForExercise, deleteSetFromStore, updateSetInStore } = useActiveSession()
+  const { sessionId, sessionExercises, weekNumber } = useSessionStore()
   const { history, loading: loadingHistory } = useExerciseHistory(exercise.id, sessionId)
   const keyboard = useKeyboard()
 
   const [expanded, setExpanded] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [showRemove, setShowRemove] = useState(false)
+  const [recommendation, setRecommendation] = useState<any | null>(null)
 
   const completedSets = setsForExercise(exercise.id)
-  const effectiveSets = completedSets.filter(s => s.setType === 'effective')
 
   const sessionEx = sessionExercises.find(ex => ex.exerciseId === exercise.id)
   const targetSets = sessionEx?.targetSets ?? 3
@@ -225,9 +58,13 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
       const initial: PendingSet[] = Array.from({ length: initialRows }, (_, i) => ({
         weight: prevSets[i]?.weight.toString() ?? '',
         reps: prevSets[i]?.reps.toString() ?? '',
-        technique: 'normal' as Technique,
+        technique: (prevSets[i]?.technique as Technique) ?? 'normal',
         rir: 2,
         setType: i === 0 ? 'warmup' : 'effective',
+        restPauseReps: prevSets[i]?.restPauseReps?.toString() ?? '',
+        dropWeight: prevSets[i]?.dropWeight?.toString() ?? '',
+        dropReps: prevSets[i]?.dropReps?.toString() ?? '',
+        restAfterSeconds: 90,
       }))
       setPendingSets(exercise.id, initial)
     }
@@ -247,11 +84,32 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
           technique: 'normal' as Technique,
           rir: 2,
           setType: 'effective' as const,
+          restPauseReps: '',
+          dropWeight: '',
+          dropReps: '',
+          restAfterSeconds: 90,
         })
       }
       setPendingSets(exercise.id, updated)
     }
   }, [completedSets.length, storePendingSets, exercise.id, history, setPendingSets])
+
+  // Carga la recomendación de progresión inteligente
+  useEffect(() => {
+    if (!user || !exercise.id || !weekNumber) return
+    const loadRec = async () => {
+      const res = await progressionService.getRecommendation(
+        user.id,
+        exercise.id,
+        weekNumber,
+        !!exercise.is_compound
+      )
+      if (res.data) {
+        setRecommendation(res.data)
+      }
+    }
+    loadRec()
+  }, [user, exercise.id, weekNumber, exercise.is_compound])
 
   const addRow = () => {
     const nextIdx = pendingSets.length
@@ -262,6 +120,10 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
       technique: 'normal',
       rir: 2,
       setType: 'effective',
+      restPauseReps: '',
+      dropWeight: '',
+      dropReps: '',
+      restAfterSeconds: 90,
     })
   }
 
@@ -283,7 +145,10 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
       weightUnit,
       reps: parseInt(pending.reps),
       rirPerceived: pending.technique === 'failure' ? 0 : pending.rir,
-      restAfterSeconds: 90,
+      restAfterSeconds: pending.restAfterSeconds ?? 90,
+      restPauseReps: pending.technique === 'rest_pause' && pending.restPauseReps ? parseInt(pending.restPauseReps) : undefined,
+      dropWeight: pending.technique === 'drop_set' && pending.dropWeight ? parseFloat(pending.dropWeight) : undefined,
+      dropReps: pending.technique === 'drop_set' && pending.dropReps ? parseInt(pending.dropReps) : undefined,
     })
   }
 
@@ -296,7 +161,16 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
   const getPrevLabel = (rowIndex: number): string | null => {
     const prev = prevSets[rowIndex]
     if (!prev) return null
-    return `${prev.weight} ${prev.weightUnit} × ${prev.reps}`
+    
+    let text = `${prev.weight} ${prev.weightUnit} × ${prev.reps}`
+    if (prev.technique === 'failure') {
+      text += ' (F)'
+    } else if (prev.technique === 'rest_pause' && prev.restPauseReps) {
+      text += ` (+${prev.restPauseReps} RP)`
+    } else if (prev.technique === 'drop_set' && prev.dropWeight && prev.dropReps) {
+      text += ` (↓ ${prev.dropWeight} × ${prev.dropReps} DS)`
+    }
+    return text
   }
 
   return (
@@ -367,6 +241,16 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
             </div>
           )}
 
+          {/* Recomendación de Progresión */}
+          {recommendation && (
+            <div className="flex gap-2 px-3 py-2 mx-3 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs">
+              <span className="font-semibold text-primary">Recomendación (Semana {weekNumber}):</span>
+              <span className="text-foreground">
+                {recommendation.setsCount}×{recommendation.repRange} reps @ {recommendation.targetWeightKg} kg ({recommendation.rir})
+              </span>
+            </div>
+          )}
+
           {/* Historial sesión anterior */}
           {showHistory && history && (
             <div className="p-3 mx-3 mb-2 space-y-1 border rounded-lg border-secondary/20 bg-secondary/5">
@@ -374,14 +258,21 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
                 {formatDateShort(history.sessionDate)}
                 {history.sessionName && ` · ${history.sessionName}`}
               </p>
-              {history.sets.filter(s => s.setType === 'effective').map((s, i) => (
-                <div key={i} className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">#{s.setNumber}</span>
-                  <span className="font-mono text-foreground">
-                    {s.weight} {s.weightUnit} × {s.reps}
-                  </span>
-                </div>
-              ))}
+              {history.sets.filter(s => s.setType === 'effective').map((s, i) => {
+                let techText = ''
+                if (s.technique === 'failure') techText = ' (F)'
+                else if (s.technique === 'rest_pause' && s.restPauseReps) techText = ` (+${s.restPauseReps} RP)`
+                else if (s.technique === 'drop_set' && s.dropWeight && s.dropReps) techText = ` (↓ ${s.dropWeight} × ${s.dropReps} DS)`
+
+                return (
+                  <div key={i} className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">#{s.setNumber}</span>
+                    <span className="font-mono text-foreground">
+                      {s.weight} {s.weightUnit} × {s.reps}{techText}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           )}
 
@@ -405,43 +296,105 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
               <div className="divide-y divide-border/50">
                 {pendingSets.map((pending, i) => {
                   const completed = completedSets[i]
-                  const isCompleted = !!completed
+                  
+                  const effectiveIndex = completedSets
+                    .slice(0, i)
+                    .filter(s => s.setType === 'effective').length + 
+                    (pending.setType === 'effective' ? 1 : 0);
 
                   return (
                     <SetRow
                       key={i}
                       index={i}
-                      setNumber={pending.setType === 'warmup' ? 0 : i}
-                      setType={pending.setType}
-                      weight={isCompleted ? completed.weight.toString() : pending.weight}
-                      reps={isCompleted ? completed.reps.toString() : pending.reps}
-                      technique={isCompleted ? completed.technique : pending.technique}
-                      rir={isCompleted ? completed.rirPerceived : pending.rir}
-                      prevLabel={getPrevLabel(i)}
-                      isCompleted={isCompleted}
-                      isPR={isCompleted && completed.isPR}
+                      setNumber={pending.setType === 'warmup' ? 0 : effectiveIndex}
                       weightUnit={weightUnit}
+                      completedSet={completed}
+                      pendingSet={completed ? null : pending}
                       onTapWeight={() => keyboard.openKeyboard({
                         key: `weight-${exercise.id}-${i}`,
-                        value: pending.weight,
+                        value: completed ? (completed.weight?.toString() ?? '') : (pending.weight ?? ''),
                         label: `Peso — Serie ${i + 1}`,
                         decimal: true,
-                        onCommit: (v) => updatePendingSet(exercise.id, i, { weight: v }),
+                        onCommit: (v) => {
+                          if (completed) {
+                            updateSetInStore(completed.id, { weight: parseFloat(v) || 0 })
+                          } else {
+                            updatePendingSet(exercise.id, i, { weight: v })
+                          }
+                        },
                       })}
                       onTapReps={() => keyboard.openKeyboard({
                         key: `reps-${exercise.id}-${i}`,
-                        value: pending.reps,
+                        value: completed ? (completed.reps?.toString() ?? '') : (pending.reps ?? ''),
                         label: `Reps — Serie ${i + 1}`,
                         decimal: false,
-                        onCommit: (v) => updatePendingSet(exercise.id, i, { reps: v }),
+                        onCommit: (v) => {
+                          if (completed) {
+                            updateSetInStore(completed.id, { reps: parseInt(v) || 0 })
+                          } else {
+                            updatePendingSet(exercise.id, i, { reps: v })
+                          }
+                        },
+                      })}
+                      onTapRpReps={() => keyboard.openKeyboard({
+                        key: `rpReps-${exercise.id}-${i}`,
+                        value: completed ? (completed.restPauseReps?.toString() ?? '') : (pending.restPauseReps ?? ''),
+                        label: `Reps Rest-Pause — Serie ${i + 1}`,
+                        decimal: false,
+                        onCommit: (v) => {
+                          if (completed) {
+                            updateSetInStore(completed.id, { restPauseReps: parseInt(v) || undefined })
+                          } else {
+                            updatePendingSet(exercise.id, i, { restPauseReps: v })
+                          }
+                        },
+                      })}
+                      onTapDropWeight={() => keyboard.openKeyboard({
+                        key: `dropWeight-${exercise.id}-${i}`,
+                        value: completed ? (completed.dropWeight?.toString() ?? '') : (pending.dropWeight ?? ''),
+                        label: `Peso Drop — Serie ${i + 1}`,
+                        decimal: true,
+                        onCommit: (v) => {
+                          if (completed) {
+                            updateSetInStore(completed.id, { dropWeight: parseFloat(v) || undefined })
+                          } else {
+                            updatePendingSet(exercise.id, i, { dropWeight: v })
+                          }
+                        },
+                      })}
+                      onTapDropReps={() => keyboard.openKeyboard({
+                        key: `dropReps-${exercise.id}-${i}`,
+                        value: completed ? (completed.dropReps?.toString() ?? '') : (pending.dropReps ?? ''),
+                        label: `Reps Drop — Serie ${i + 1}`,
+                        decimal: false,
+                        onCommit: (v) => {
+                          if (completed) {
+                            updateSetInStore(completed.id, { dropReps: parseInt(v) || undefined })
+                          } else {
+                            updatePendingSet(exercise.id, i, { dropReps: v })
+                          }
+                        },
                       })}
                       onComplete={() => handleComplete(i)}
                       onDelete={() => {
-                        if (isCompleted) deleteSetFromStore(completed.id)
+                        if (completed) deleteSetFromStore(completed.id)
                         else removePendingSetRow(exercise.id, i)
                       }}
-                      onTechChange={(t) => updatePendingSet(exercise.id, i, { technique: t })}
-                      onRirChange={(r) => updatePendingSet(exercise.id, i, { rir: r })}
+                      onUpdate={(updates) => {
+                        if (completed) {
+                          const activeUpdates: Partial<ActiveSet> = {}
+                          if (updates.setType !== undefined) activeUpdates.setType = updates.setType
+                          if (updates.technique !== undefined) activeUpdates.technique = updates.technique
+                          if (updates.rir !== undefined) activeUpdates.rirPerceived = updates.rir
+                          if (updates.restPauseReps !== undefined) activeUpdates.restPauseReps = updates.restPauseReps ? parseInt(updates.restPauseReps) : undefined
+                          if (updates.dropWeight !== undefined) activeUpdates.dropWeight = updates.dropWeight ? parseFloat(updates.dropWeight) : undefined
+                          if (updates.dropReps !== undefined) activeUpdates.dropReps = updates.dropReps ? parseInt(updates.dropReps) : undefined
+                          updateSetInStore(completed.id, activeUpdates)
+                        } else {
+                          updatePendingSet(exercise.id, i, updates)
+                        }
+                      }}
+                      prevLabel={getPrevLabel(i)}
                     />
                   )
                 })}
