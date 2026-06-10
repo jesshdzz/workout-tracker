@@ -46,6 +46,7 @@ export type SessionExercise = {
   warmupSets?: number
   technique?: string
   restAfterSeconds?: number
+  notesText?: string        // Notas del ejercicio en la rutina (de routine_exercises.notes)
   sets?: {
     setType: 'warmup' | 'effective'
     reps: string

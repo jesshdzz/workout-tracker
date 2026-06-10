@@ -5,10 +5,9 @@ import { recordsRepository } from '~/repositories/records.repository'
 import { calcRM } from '~/core/utils/epley'
 import type { Result } from '~/core/types/common.types'
 import type { Database } from '~/core/types/database.types'
-import { drainQueue, enqueue, getQueue, removeFromQueue } from '~/core/sync/syncQueue'
+import type { ActiveSet } from '~/features/training/store/session.store'
 
 type Session = Database['public']['Tables']['sessions']['Row']
-type Set = Database['public']['Tables']['sets']['Row']
 
 type LogSetInput = {
   exerciseId: string
@@ -25,9 +24,9 @@ type LogSetInput = {
 }
 
 type LogSetResult = {
-  set: Set
+  id: string
   isPR: boolean
-  newRM: number | null
+  estimatedRM: number
 }
 
 export const workoutService = {
@@ -43,7 +42,6 @@ export const workoutService = {
     let blockNumber = options?.blockNumber ?? null
 
     if (weekNumber === null) {
-      // Intentar obtener de user_program_state
       const { data: progState } = await supabase
         .from('user_program_state')
         .select('current_week, current_block')
@@ -70,126 +68,113 @@ export const workoutService = {
     })
   },
 
-  async logSet(sessionId: string, userId: string, input: LogSetInput) {
-    // 1. Genera un UUID local para la serie
+  /**
+   * Registra una serie localmente SIN fetch a la BD.
+   * Devuelve el ID local y si es un nuevo récord personal (estimado).
+   * El parámetro `prMap` es mutado en memoria para detectar PRs intra-sesión.
+   *
+   * El flush real a Supabase ocurre SOLO al llamar finishSession().
+   */
+  logSet(input: LogSetInput, prMap: Map<string, number>): LogSetResult {
     const localId = crypto.randomUUID()
-
-    const payload = {
-      id: localId,
-      session_id: sessionId,
-      exercise_id: input.exerciseId,
-      set_number: input.setNumber,
-      set_type: input.setType,
-      technique: input.technique,
-      weight: input.weight,
-      weight_unit: input.weightUnit,
-      reps: input.reps,
-      rest_pause_reps: input.restPauseReps ?? null,
-      drop_weight: input.dropWeight ?? null,
-      drop_reps: input.dropReps ?? null,
-      rir_perceived: input.rirPerceived,
-      is_pr: false,
-      completed: true,
-    }
-
-    // 2. Encola la operación
-    enqueue({
-      type: 'create_set',
-      payload: payload,
-    })
-
-    // 3. Si hay conexión, intenta sincronizar inmediatamente
-    if (navigator.onLine) {
-      await drainQueue()
-    }
-
     const estimatedRM = calcRM(input.weight, input.reps)
-    const currentPR = await recordsRepository.findBest(input.exerciseId, 'estimated_1rm')
-    const isPR = input.setType === 'effective' && (!currentPR.data || estimatedRM > currentPR.data.value)
+    const currentBest = prMap.get(input.exerciseId) ?? 0
+    const isPR = input.setType === 'effective' && estimatedRM > currentBest
 
-    if (isPR && navigator.onLine) {
-      await recordsRepository.create({
-        user_id: userId,
-        exercise_id: input.exerciseId,
-        record_type: 'estimated_1rm',
-        value: estimatedRM,
-        set_id: localId,
-        achieved_at: new Date().toISOString().split('T')[0],
-      })
-    }
-    // 4. Sin conexión — retorna con el ID local, sin PR (se recalcula al sincronizar)
-    return {
-      data: {
-        set: { id: localId } as any,
-        isPR,
-        newRM: isPR ? estimatedRM : null,
-      },
-      error: null,
-    }
+    // Actualizar el mapa para comparaciones intra-sesión
+    if (isPR) prMap.set(input.exerciseId, estimatedRM)
+
+    return { id: localId, isPR, estimatedRM }
   },
 
-  async finishSession(sessionId: string, durationSeconds: number): Promise<Result<Session>> {
-    if (navigator.onLine) await drainQueue()
+  /**
+   * Guarda la sesión completa en Supabase:
+   * 1. Bulk-insert de TODAS las series (una sola llamada a la BD)
+   * 2. Calcular y guardar PRs en paralelo (async-parallel)
+   * 3. Marcar sesión como completada
+   *
+   * Este es el ÚNICO momento en que se escriben sets en Supabase durante un entreno.
+   */
+  async finishSession(
+    sessionId: string,
+    durationSeconds: number,
+    sets: ActiveSet[],
+    userId: string
+  ): Promise<Result<Session>> {
+    // 1. Bulk-insert de todas las series en una sola llamada (supabase-postgres-best-practices: query-batch)
+    if (sets.length > 0) {
+      const setsPayload = sets.map(s => ({
+        id: s.id,
+        session_id: sessionId,
+        exercise_id: s.exerciseId,
+        set_number: s.setNumber,
+        set_type: s.setType,
+        technique: s.technique,
+        weight: s.weight,
+        weight_unit: s.weightUnit,
+        reps: s.reps,
+        rest_pause_reps: s.restPauseReps ?? null,
+        drop_weight: s.dropWeight ?? null,
+        drop_reps: s.dropReps ?? null,
+        rir_perceived: s.rirPerceived,
+        is_pr: s.isPR,
+        completed: true,
+      }))
 
-    const { data, error } = await sessionsRepository.complete(sessionId, { duration_s: durationSeconds })
+      const { error: setsError } = await supabase.from('sets').insert(setsPayload)
+      if (setsError) return { data: null, error: setsError }
+    }
 
-    const queue = getQueue()
-    queue
-      .filter(op => op.type === 'complete_session' && op.payload.id === sessionId)
-      .forEach(op => removeFromQueue(op.opId))
+    // 2. Calcular el mejor 1RM estimado por ejercicio de esta sesión
+    const effectiveSets = sets.filter(s => s.setType === 'effective')
+    const sessionBestRM = new Map<string, { rm: number; setId: string }>()
+    for (const s of effectiveSets) {
+      const rm = calcRM(s.weight, s.reps)
+      const current = sessionBestRM.get(s.exerciseId)
+      if (!current || rm > current.rm) {
+        sessionBestRM.set(s.exerciseId, { rm, setId: s.id })
+      }
+    }
 
-    if (error) return { data: null, error }
-    return { data, error: null }
+    // 3. Comparar con PRs existentes y guardar los nuevos (en paralelo — async-parallel)
+    await Promise.all(
+      Array.from(sessionBestRM.entries()).map(async ([exerciseId, { rm, setId }]) => {
+        const existing = await recordsRepository.findBest(exerciseId, 'estimated_1rm')
+        if (!existing.data || rm > existing.data.value) {
+          await recordsRepository.create({
+            user_id: userId,
+            exercise_id: exerciseId,
+            record_type: 'estimated_1rm',
+            value: rm,
+            set_id: setId,
+            achieved_at: new Date().toISOString().split('T')[0],
+          })
+        }
+      })
+    )
+
+    // 4. Marcar sesión como completada
+    return sessionsRepository.complete(sessionId, { duration_s: durationSeconds })
   },
 
   async getActiveSession(userId: string): Promise<Result<Session | null>> {
     return sessionsRepository.findActive(userId)
   },
 
-  async discardSession(sessionId: string): Promise<void> {
-    const queue = getQueue()
-    queue
-      .filter(op =>
-        (op.type === 'create_set' && op.payload.session_id === sessionId) ||
-        (op.type === 'update_set' && op.payload.session_id === sessionId)
-      )
-      .forEach(op => removeFromQueue(op.opId))
-
-    enqueue({ type: 'discard_session', payload: { id: sessionId } })
-    if (navigator.onLine) await drainQueue()
+  /**
+   * Descarta la sesión: elimina únicamente la fila de sesión en BD.
+   * Durante una sesión activa los sets NUNCA se escriben en Supabase
+   * (arquitectura local-first), por lo que no hay sets que limpiar.
+   */
+  async discardSession(sessionId: string): Promise<Result<null>> {
+    return sessionsRepository.discardSession(sessionId)
   },
 
-  async updateSet(
-    setId: string,
-    updates: {
-      weight?: number
-      reps?: number
-      restPauseReps?: number
-      dropWeight?: number
-      dropReps?: number
-      rirPerceived?: number
-      technique?: string
-      setType?: 'warmup' | 'effective'
-    }
-  ): Promise<Result<Set>> {
-    const mappedUpdates: any = {}
-    if (updates.weight !== undefined) mappedUpdates.weight = updates.weight
-    if (updates.reps !== undefined) mappedUpdates.reps = updates.reps
-    if (updates.restPauseReps !== undefined) mappedUpdates.rest_pause_reps = updates.restPauseReps
-    if (updates.dropWeight !== undefined) mappedUpdates.drop_weight = updates.dropWeight
-    if (updates.dropReps !== undefined) mappedUpdates.drop_reps = updates.dropReps
-    if (updates.rirPerceived !== undefined) mappedUpdates.rir_perceived = updates.rirPerceived
-    if (updates.technique !== undefined) mappedUpdates.technique = updates.technique
-    if (updates.setType !== undefined) mappedUpdates.set_type = updates.setType
-
-    return setsRepository.update(setId, mappedUpdates)
-  },
-
-  async getExerciseHistory(exerciseId: string, userId: string, currentSessionId: string | null): Promise<Result<SetWithSession[]>> {
+  async getExerciseHistory(
+    exerciseId: string,
+    userId: string,
+    currentSessionId: string | null
+  ): Promise<Result<SetWithSession[]>> {
     return setsRepository.findLastByExercise(userId, exerciseId, currentSessionId)
-  },
-
-  async deleteSet(setId: string): Promise<Result<null>> {
-    return setsRepository.delete(setId)
   },
 }

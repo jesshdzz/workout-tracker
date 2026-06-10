@@ -98,16 +98,12 @@ export class SessionsRepository extends BaseRepository {
   }
 
   async discardSession(sessionId: string): Promise<Result<null>> {
-    await supabase
-      .from('sets')
-      .delete()
-      .eq('session_id', sessionId)
-
+    // Arquitectura local-first: los sets NUNCA se escriben en BD durante una sesión activa.
+    // Solo eliminamos la fila de sesión — sin riesgo de FK constraint con personal_records.
     const { error } = await supabase
       .from('sessions')
       .delete()
       .eq('id', sessionId)
-
     return this.handle(null, error)
   }
 }
