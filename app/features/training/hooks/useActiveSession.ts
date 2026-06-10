@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useSessionStore, type ActiveSet } from '../store/session.store'
 import { workoutService } from '~/services/workout.service'
+import { recordsRepository } from '~/repositories/records.repository'
 import { useAuth } from '~/features/auth/AuthProvider'
 
 export function useActiveSession() {
@@ -18,7 +19,24 @@ export function useActiveSession() {
   } = useSessionStore()
 
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  // const tickElapsed = useSessionStore((state) => state.tickElapsed)
+
+  /**
+   * Mapa de mejores 1RMs almacenados + intra-sesión para detectar PRs localmente.
+   * Se usa useRef (no useState) porque las mutaciones no necesitan re-renders —
+   * solo se consulta dentro de logSet (rerender-defer-reads de vercel-react-best-practices).
+   */
+  const localPRsMap = useRef<Map<string, number>>(new Map())
+
+  // Cargar PRs del usuario al montar para comparación local durante el entreno (client-localstorage-schema)
+  useEffect(() => {
+    if (!user) return
+    recordsRepository.findByUser(user.id).then(result => {
+      if (result.data) {
+        localPRsMap.current.clear()
+        result.data.forEach(pr => localPRsMap.current.set(pr.exercise_id, pr.value))
+      }
+    })
+  }, [user?.id])
 
   const startTimer = () => {
     if (elapsedRef.current) clearInterval(elapsedRef.current)
@@ -60,106 +78,99 @@ export function useActiveSession() {
     return result.data
   }
 
-  const logSet = async (input: {
+  /**
+   * Registra una serie en el store local SIN fetch a Supabase.
+   * Calcula isPR comparando contra el mapa local (histórico + intra-sesión).
+   * El flush real ocurre al llamar finishSession().
+   */
+  const logSet = (input: {
     exerciseId: string
     exerciseName: string
     setNumber: number
     setType: 'warmup' | 'effective'
-    technique: 'normal' | 'rest_pause' | 'drop_set' | 'failure'  // ← añade
+    technique: 'normal' | 'rest_pause' | 'drop_set' | 'failure'
     weight: number
     weightUnit: 'kg' | 'lb'
     reps: number
-    restPauseReps?: number    // ← añade
-    dropWeight?: number       // ← añade
-    dropReps?: number         // ← añade
+    restPauseReps?: number
+    dropWeight?: number
+    dropReps?: number
     rirPerceived: number
     restAfterSeconds?: number
   }) => {
-    if (!sessionId || !user) return null
+    if (!sessionId) return null
 
-    const result = await workoutService.logSet(sessionId, user.id, {
-      exerciseId: input.exerciseId,
-      setNumber: input.setNumber,
-      setType: input.setType,
-      technique: input.technique,       // ← añade
-      weight: input.weight,
-      weightUnit: input.weightUnit,
-      reps: input.reps,
-      restPauseReps: input.restPauseReps,   // ← añade
-      dropWeight: input.dropWeight,      // ← añade
-      dropReps: input.dropReps,        // ← añade
-      rirPerceived: input.rirPerceived,
-    })
-
-    if (result.error || !result.data) return null
+    // Sin fetch — calcula localmente y muta el mapa intra-sesión
+    const { id, isPR } = workoutService.logSet(input, localPRsMap.current)
 
     const newSet: ActiveSet = {
-      id: result.data.set.id,    // ← viene del resultado de BD
+      id,
       exerciseId: input.exerciseId,
       exerciseName: input.exerciseName,
       setNumber: input.setNumber,
       setType: input.setType,
-      technique: input.technique,       // ← añade
+      technique: input.technique,
       weight: input.weight,
       weightUnit: input.weightUnit,
       reps: input.reps,
-      restPauseReps: input.restPauseReps,   // ← añade
-      dropWeight: input.dropWeight,      // ← añade
-      dropReps: input.dropReps,        // ← añade
+      restPauseReps: input.restPauseReps,
+      dropWeight: input.dropWeight,
+      dropReps: input.dropReps,
       rirPerceived: input.rirPerceived,
       completed: true,
-      isPR: result.data.isPR,
+      isPR,
     }
 
     addSet(newSet)
 
-    if (result.data.isPR) {
+    if (isPR) {
       markPR(input.setNumber, input.exerciseId)
     }
 
-    // Iniciar descanso automáticamente
     if (input.restAfterSeconds) {
       startRest(input.restAfterSeconds)
     }
 
-    return result.data
+    return { id, isPR }
   }
 
+  /**
+   * Guarda la sesión en Supabase: bulk-insert de sets → PRs → completar.
+   * Pasa todos los sets del store al servicio para el flush final.
+   */
   const finishSession = async () => {
-    if (!sessionId) return
+    if (!sessionId || !user) return null
     pauseTimer()
-    await workoutService.finishSession(sessionId, elapsedSeconds)
+    return workoutService.finishSession(sessionId, elapsedSeconds, sets, user.id)
   }
 
   const setsForExercise = (exerciseId: string) =>
-    sets.filter((s) => s.exerciseId === exerciseId)
+    sets.filter(s => s.exerciseId === exerciseId)
 
+  /**
+   * Descarta la sesión: elimina la fila en BD y retorna el resultado
+   * para que el caller pueda decidir si limpiar el store o mostrar error.
+   */
   const discardSession = async () => {
-    if (!sessionId) return
+    if (!sessionId) return { data: null as null, error: null }
     pauseTimer()
-    await workoutService.discardSession(sessionId)
+    return workoutService.discardSession(sessionId)
   }
 
-  const updateSetInStore = async (setId: string, updates: Partial<ActiveSet>) => {
-    // Actualiza el store inmediatamente (optimistic update)
+  /**
+   * Actualiza una serie completada SOLO en el store local (sin fetch a Supabase).
+   * El cambio se persistirá junto con el resto al llamar finishSession().
+   */
+  const updateSetInStore = (setId: string, updates: Partial<ActiveSet>) => {
     useSessionStore.getState().updateSet(setId, updates)
-
-    // Sincroniza con la BD
-    await workoutService.updateSet(setId, {
-      weight: updates.weight,
-      reps: updates.reps,
-      restPauseReps: updates.restPauseReps,
-      dropWeight: updates.dropWeight,
-      dropReps: updates.dropReps,
-      rirPerceived: updates.rirPerceived,
-      technique: updates.technique,
-      setType: updates.setType,
-    })
   }
 
-  const deleteSetFromStore = async (setId: string) => {
+  /**
+   * Elimina una serie del store local SIN fetch a Supabase.
+   * Como los sets nunca se escriben en BD durante la sesión, no hay FK que limpiar.
+   */
+  const deleteSetFromStore = (setId: string) => {
     useSessionStore.getState().removeSet(setId)
-    await workoutService.deleteSet(setId)
   }
 
   return {
@@ -174,5 +185,6 @@ export function useActiveSession() {
     setsForExercise,
     updateSetInStore,
     deleteSetFromStore,
+    reset,
   }
 }
