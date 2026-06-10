@@ -27,6 +27,18 @@ export function useRestTimer() {
   useEffect(() => {
     if (!isResting && restSeconds === 0) return
     if (restSeconds === 0 && isResting) {
+      // Notificación del sistema vía Service Worker
+      if ('Notification' in window && Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.showNotification('¡Descanso completado!', {
+            body: 'Es hora de tu siguiente serie. ¡A darle!',
+            icon: '/pwa-192x192.png',
+            vibrate: [200, 100, 200, 100, 200],
+            requireInteraction: true
+          } as NotificationOptions & { vibrate?: number[] })
+        }).catch(() => {})
+      }
+
       // Beep simple con Web Audio API
       try {
         const ctx = new AudioContext()
@@ -43,10 +55,18 @@ export function useRestTimer() {
     }
   }, [restSeconds, isResting])
 
+  const handleStartRest = (seconds: number) => {
+    // Pedir permiso de notificaciones en el gesto del usuario
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+    startRest(seconds)
+  }
+
   return {
     isResting,
     restSeconds,
-    startRest,
+    startRest: handleStartRest,
     stopRest,
   }
 }

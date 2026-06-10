@@ -9,6 +9,7 @@ import { ExercisePicker } from '~/features/training/components/ExercisePicker'
 import { RestTimer } from '~/features/training/components/RestTimer'
 import { SessionSummary } from '~/features/training/components/SessionSummary'
 import { FinishSessionModal } from '~/features/training/components/FinishSessionModal'
+import { IncompleteSetsModal } from '~/features/training/components/IncompleteSetsModal'
 import { Button } from '~/components/ui/button'
 import { Clock, Play, Square, Dumbbell, Plus, ArrowLeft } from 'lucide-react'
 import { formatDuration } from '~/core/utils/formatters'
@@ -52,6 +53,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const [showConfirmModal, setShowConfirmModal] = useState(false)
     const [showSummary, setShowSummary] = useState(false)
     const [showPicker, setShowPicker] = useState(false)
+    const [showIncompleteModal, setShowIncompleteModal] = useState(false)
     const [inputName, setInputName] = useState('')
     const [currentRoutine, setCurrentRoutine] = useState<RoutineWithExercises | null>(null)
 
@@ -78,7 +80,19 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
         setStarted(true)
     }
 
-    const handleFinishPress = () => setShowConfirmModal(true)
+    const handleFinishPress = () => {
+        // Contar series con datos ingresados pero sin marcar (pendingSets con weight y reps)
+        const pendingSetsAll = Object.values(
+            useSessionStore.getState().pendingSets
+        ).flat()
+        const incompleteFilled = pendingSetsAll.filter(s => s.weight && s.reps).length
+
+        if (incompleteFilled > 0) {
+            setShowIncompleteModal(true)
+        } else {
+            setShowConfirmModal(true)
+        }
+    }
 
     const handleConfirmFinish = () => {
         setShowConfirmModal(false)
@@ -148,7 +162,13 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     }
 
     const handleDiscard = async () => {
-        await discardSession()
+        const result = await discardSession()
+        // Solo limpiamos el store si el descarte fue exitoso.
+        // Si falla, el sessionId queda en store para poder reintentar.
+        if (result?.error) {
+            console.error('Error al descartar la sesión:', result.error.message)
+            return
+        }
         reset()
         navigate('/app', { replace: true })
     }
@@ -220,6 +240,19 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                             onCancel={() => setShowConfirmModal(false)}
                         />
                     )}
+                    <IncompleteSetsModal
+                        open={showIncompleteModal}
+                        incompleteSetsCount={
+                            Object.values(useSessionStore.getState().pendingSets)
+                                .flat()
+                                .filter(s => s.weight && s.reps).length
+                        }
+                        onConfirm={() => {
+                            setShowIncompleteModal(false)
+                            setShowConfirmModal(true)
+                        }}
+                        onCancel={() => setShowIncompleteModal(false)}
+                    />
                     {showPicker && (
                         <ExercisePicker
                             exercises={exercises}
