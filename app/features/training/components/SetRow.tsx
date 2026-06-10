@@ -90,10 +90,14 @@ export function SetRow({
   let techniqueBadge = null
   if (technique === 'failure') {
     techniqueBadge = <span className="text-[10px] px-1 py-0.5 rounded bg-red-500/10 text-red-500 font-semibold uppercase">F</span>
-  } else if (technique === 'rest_pause' && restPauseReps) {
-    techniqueBadge = <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-500 font-semibold font-mono">+{restPauseReps} RP</span>
-  } else if (technique === 'drop_set' && dropWeight && dropReps) {
-    techniqueBadge = <span className="text-[10px] px-1 py-0.5 rounded bg-purple-500/10 text-purple-500 font-semibold font-mono">↓{dropWeight}kg×{dropReps} DS</span>
+  } else if (technique === 'rest_pause') {
+    techniqueBadge = restPauseReps
+      ? <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-500 font-semibold font-mono">+{restPauseReps} RP</span>
+      : <span className="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-500 font-semibold">RP</span>
+  } else if (technique === 'drop_set') {
+    techniqueBadge = (dropWeight && dropReps)
+      ? <span className="text-[10px] px-1 py-0.5 rounded bg-purple-500/10 text-purple-500 font-semibold font-mono">↓{dropWeight}kg×{dropReps} DS</span>
+      : <span className="text-[10px] px-1 py-0.5 rounded bg-purple-500/10 text-purple-500 font-semibold">DS</span>
   }
 
   return (
@@ -190,7 +194,15 @@ export function SetRow({
                   <button
                     key={t}
                     type="button"
-                    onClick={() => onUpdate({ setType: t })}
+                    onClick={() => {
+                    onUpdate(
+                      t === 'warmup'
+                        // Al cambiar a calentamiento, resetear técnica y sus datos
+                        // (las series de calentamiento no usan técnicas avanzadas)
+                        ? { setType: t, technique: 'normal', restPauseReps: '', dropWeight: '', dropReps: '' }
+                        : { setType: t }
+                    )
+                  }}
                     className={`px-3 py-1 font-medium transition-colors ${
                       setType === t
                         ? 'bg-primary text-primary-foreground'
@@ -227,29 +239,31 @@ export function SetRow({
             )}
           </div>
 
-          {/* Selector de Técnica */}
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Técnica avanzada</span>
-            <div className="flex gap-1 border border-border rounded-lg overflow-hidden bg-card p-0.5">
-              {TECHNIQUES.map((t) => (
-                <button
-                  key={t.value}
-                  type="button"
-                  onClick={() => onUpdate({ technique: t.value })}
-                  className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${
-                    technique === t.value
-                      ? 'bg-primary/10 text-primary font-bold'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t.short}
-                </button>
-              ))}
+          {/* Selector de Técnica — solo para series efectivas */}
+          {setType !== 'warmup' && (
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Técnica avanzada</span>
+              <div className="flex gap-1 border border-border rounded-lg overflow-hidden bg-card p-0.5">
+                {TECHNIQUES.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => onUpdate({ technique: t.value })}
+                    className={`flex-1 py-1 text-xs font-medium rounded-md transition-colors ${
+                      technique === t.value
+                        ? 'bg-primary/10 text-primary font-bold'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {t.short}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Parámetros de Técnica Avanzada */}
-          {technique === 'rest_pause' && (
+          {setType !== 'warmup' && technique === 'rest_pause' && (
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Repeticiones Rest-Pause</span>
               <button
@@ -262,7 +276,7 @@ export function SetRow({
             </div>
           )}
 
-          {technique === 'drop_set' && (
+          {setType !== 'warmup' && technique === 'drop_set' && (
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Peso Drop ({weightUnit})</span>
@@ -287,8 +301,8 @@ export function SetRow({
             </div>
           )}
 
-          {/* RIR (sólo si no es al fallo) */}
-          {technique !== 'failure' && (
+          {/* RIR — solo para series efectivas y no al fallo */}
+          {setType !== 'warmup' && technique !== 'failure' && (
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">RIR percibido (Reps en Reserva)</span>
               <div className="flex gap-1">
