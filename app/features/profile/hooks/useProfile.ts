@@ -54,7 +54,6 @@ export function useProfile() {
         setSaving(true)
         setError(null)
 
-
         const { data, error } = await profilesRepository.update(user.id, { ...updates, updated_at: new Date().toISOString() })
 
         if (error) setError('Error al guardar el perfil')
@@ -63,5 +62,16 @@ export function useProfile() {
         setSaving(false)
     }
 
-    return { profile, rms, loading, saving, error, updateProfile, signOut }
+    const saveRM = async (exerciseId: string, rmKg: number) => {
+        if (!user) return
+        const result = await rmsRepository.upsert({
+            user_id: user.id,
+            exercise_id: exerciseId,
+            rm_kg: rmKg,
+            tested_at: new Date().toISOString().split('T')[0],
+        })
+        if (!result.error) await load()
+    }
+
+    return { profile, rms, loading, saving, error, updateProfile, saveRM, signOut }
 }

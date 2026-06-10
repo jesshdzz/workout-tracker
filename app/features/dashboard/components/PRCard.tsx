@@ -1,9 +1,9 @@
 import { Trophy } from 'lucide-react'
+import { Badge } from '~/components/ui/badge'
 import { formatDate } from '~/core/utils/formatters'
-import type { Database } from '~/core/types/database.types'
+import type { PRWithExercise } from '../hooks/useDashboard'
 
-type PR = Database['public']['Tables']['personal_records']['Row']
-type Props = { prs: PR[] }
+type Props = { prs: PRWithExercise[] }
 
 export function PRCard({ prs }: Props) {
   if (prs.length === 0) return null
@@ -18,15 +18,23 @@ export function PRCard({ prs }: Props) {
         {prs.map((pr, i) => (
           <li key={pr.id}>
             <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-xs tracking-widest uppercase text-muted-foreground">
-                  {pr.record_type === 'estimated_1rm' ? '1RM estimado' : pr.record_type}
+              <div className="min-w-0 flex-1">
+                {/* Nombre del ejercicio — usando Badge con variante semántica */}
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {pr.exercises?.name_es ?? pr.exercises?.name ?? '—'}
                 </p>
-                <p className="text-sm font-medium text-foreground mt-0.5">
-                  {pr.value.toFixed(1)} kg
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
+                    {pr.record_type === 'estimated_1rm' ? '1RM est.' : pr.record_type}
+                  </Badge>
+                  <span className="text-sm font-mono font-medium text-foreground">
+                    {pr.value.toFixed(1)} kg
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">{formatDate(pr.achieved_at)}</p>
+              <p className="text-xs text-muted-foreground shrink-0 ml-3">
+                {formatDate(pr.achieved_at)}
+              </p>
             </div>
             {i < prs.length - 1 && <div className="h-px mx-4 bg-border" />}
           </li>

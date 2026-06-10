@@ -177,7 +177,7 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded-2xl bg-card border border-border overflow-hidden ${isDragging ? 'shadow-xl opacity-90' : ''
+      className={`rounded-2xl bg-card border border-border ${isDragging ? 'shadow-xl opacity-90' : ''
         }`}
     >
       {/* Header */}
@@ -200,6 +200,12 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
               {sessionEx.targetRir !== null && ` | RIR ${sessionEx.targetRir}`}
               {sessionEx.intensityPct && ` | ${Math.round(sessionEx.intensityPct * 100)}%`}
             </p>
+          )}
+          {sessionEx?.notesText && (
+            <div className="flex items-start gap-1.5 mt-1.5 px-2 py-1.5 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <Info size={11} className="text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-muted-foreground leading-snug">{sessionEx.notesText}</p>
+            </div>
           )}
         </button>
 

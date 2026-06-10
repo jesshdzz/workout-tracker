@@ -7,14 +7,23 @@ import { useAuth } from '~/features/auth/AuthProvider'
 import type { Database } from '~/core/types/database.types'
 
 type Session = Database['public']['Tables']['sessions']['Row']
-type PR = Database['public']['Tables']['personal_records']['Row']
+
+// Extiende el tipo base con el join de exercises que hace findByUser
+export type PRWithExercise = Database['public']['Tables']['personal_records']['Row'] & {
+  exercises: {
+    id: string
+    name: string
+    name_es: string | null
+    slug: string
+  }
+}
 
 type DashboardData = {
   activeSession: Session | null
   recentSessions: Session[]
   totalSessions: number
   currentWeek: number
-  recentPRs: PR[]
+  recentPRs: PRWithExercise[]
   loading: boolean
   error: string | null
 }
@@ -25,7 +34,7 @@ export function useDashboard(currentWeek: number): DashboardData {
   const [error, setError] = useState<string | null>(null)
   const [activeSession, setActiveSession] = useState<Session | null>(null)
   const [recentSessions, setRecentSessions] = useState<Session[]>([])
-  const [recentPRs, setRecentPRs] = useState<PR[]>([])
+  const [recentPRs, setRecentPRs] = useState<PRWithExercise[]>([])
 
   useEffect(() => {
     if (!user) return
