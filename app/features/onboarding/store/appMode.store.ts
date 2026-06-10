@@ -20,7 +20,7 @@ type AppModeStore = {
  * Store persistido en localStorage para el modo de la app.
  * Separado del session store para que el modo sobreviva al reset de sesión.
  *
- * Siguiendo 'client-localstorage-schema' de vercel-react-best-practices:
+ * Siguiendo 'client-localstorage-schema'
  * la clave incluye un prefijo de versión para facilitar migraciones futuras.
  */
 export const useAppModeStore = create<AppModeStore>()(
