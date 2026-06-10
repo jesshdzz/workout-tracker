@@ -3,6 +3,7 @@ import { requireAuth } from '~/lib/auth'
 import { useProfile } from '~/features/profile/hooks/useProfile'
 import { ProfileForm } from '~/features/profile/components/ProfileForm'
 import { RMSettings } from '~/features/profile/components/RMSettings'
+import { AppModeSelector } from '~/features/onboarding/components/AppModeSelector'
 import { Button } from '~/components/ui/button'
 import { LogOut } from 'lucide-react'
 
@@ -12,7 +13,7 @@ export async function clientLoader(_: Route.LoaderArgs) {
 }
 
 export default function ProfileRoute() {
-    const { profile, rms, loading, saving, error, updateProfile, signOut } = useProfile()
+    const { profile, rms, loading, saving, error, updateProfile, saveRM, signOut } = useProfile()
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-screen bg-background">
@@ -56,7 +57,9 @@ export default function ProfileRoute() {
                 />
             )}
 
-            <RMSettings rms={rms} />
+            <AppModeSelector />
+
+            <RMSettings rms={rms} onSaveRM={saveRM} />
 
         </div>
     )

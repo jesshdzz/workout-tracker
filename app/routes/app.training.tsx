@@ -84,6 +84,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                 let warmupSets = 0
                 let technique = 'normal'
                 let restAfterSeconds = 90
+                let notesText = ''
 
                 if (re.notes) {
                     try {
@@ -95,6 +96,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                             technique = parsed.technique ?? 'normal'
                             restAfterSeconds = parsed.restAfterSeconds ?? 90
                         }
+                        notesText = parsed.notesText ?? ''
                     } catch (e) {
                         // notes is raw text, ignore parsing
                     }
@@ -111,6 +113,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                     warmupSets,
                     technique,
                     restAfterSeconds,
+                    notesText: notesText || undefined,
                     sets: sets.length > 0 ? sets : undefined,
                 })
             }

@@ -1,16 +1,65 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { calcRM, calcWorkingWeight } from '~/core/utils/epley'
 import { formatDateShort } from '~/core/utils/formatters'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Search } from 'lucide-react'
+import { Button } from '~/components/ui/button'
+import { exercisesRepository } from '~/repositories/exercises.repository'
+import type { Database } from '~/core/types/database.types'
 import type { RMEntry } from '../hooks/useProfile'
 
-type Props = { rms: RMEntry[] }
+type Exercise = Database['public']['Tables']['exercises']['Row']
 
-export function RMSettings({ rms }: Props) {
+type Props = {
+  rms: RMEntry[]
+  onSaveRM: (exerciseId: string, rmKg: number) => Promise<void>
+}
+
+export function RMSettings({ rms, onSaveRM }: Props) {
+  // — Calculadora —
   const [weight, setWeight] = useState('')
   const [reps, setReps] = useState('')
   const [currentWeightType, setCurrentWeightType] = useState<'kg' | 'lb'>('kg')
   const [showCalc, setShowCalc] = useState(false)
+
+  // — Registrar RM —
+  const [showRegister, setShowRegister] = useState(false)
+  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [search, setSearch] = useState('')
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
+  const [rmKg, setRmKg] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  // Cargar ejercicios una sola vez al montar
+  useEffect(() => {
+    exercisesRepository.findAll().then((result) => {
+      if (result.data) setExercises(result.data)
+    })
+  }, [])
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filtered = search.trim().length > 0
+    ? exercises.filter((ex) => {
+        const term = search.toLowerCase()
+        return (
+          (ex.name_es ?? ex.name).toLowerCase().includes(term) ||
+          ex.name.toLowerCase().includes(term)
+        )
+      }).slice(0, 8)
+    : []
 
   const estimated = weight && reps
     ? calcRM(parseFloat(weight), parseInt(reps))
@@ -21,6 +70,46 @@ export function RMSettings({ rms }: Props) {
     { pct: 0.78, label: 'Bloque 2 (78%)' },
     { pct: 0.88, label: 'Bloque 3 (88%)' },
   ]
+
+  const handleSelectExercise = (ex: Exercise) => {
+    setSelectedExercise(ex)
+    setSearch(ex.name_es ?? ex.name)
+    setShowDropdown(false)
+    setSaveError(null)
+    setSaveSuccess(false)
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    setSelectedExercise(null)
+    setSaveSuccess(false)
+    setShowDropdown(value.trim().length > 0)
+  }
+
+  const handleSave = async () => {
+    if (!selectedExercise) {
+      setSaveError('Selecciona un ejercicio de la lista.')
+      return
+    }
+    const kg = parseFloat(rmKg)
+    if (isNaN(kg) || kg <= 0) {
+      setSaveError('Introduce un valor de kg válido.')
+      return
+    }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      await onSaveRM(selectedExercise.id, kg)
+      setSaveSuccess(true)
+      setSearch('')
+      setSelectedExercise(null)
+      setRmKg('')
+    } catch {
+      setSaveError('Error al guardar el RM. Inténtalo de nuevo.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -57,6 +146,101 @@ export function RMSettings({ rms }: Props) {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      {/* Registrar RM manual */}
+      <div className="overflow-hidden border rounded-2xl bg-card border-border">
+        <button
+          type="button"
+          onClick={() => setShowRegister(!showRegister)}
+          className="flex items-center justify-between w-full px-4 py-3"
+        >
+          <p className="text-sm font-medium text-foreground">Registrar RM manualmente</p>
+          {showRegister
+            ? <ChevronUp size={16} className="text-muted-foreground" />
+            : <ChevronDown size={16} className="text-muted-foreground" />
+          }
+        </button>
+
+        {showRegister && (
+          <div className="px-4 pt-3 pb-4 space-y-3 border-t border-border">
+            <p className="text-xs text-muted-foreground">
+              Introduce tu RM real para un ejercicio. Sobrescribirá el valor actual si ya existe.
+            </p>
+
+            {/* Buscador de ejercicio */}
+            <div className="space-y-1" ref={searchRef}>
+              <label className="text-xs text-muted-foreground">Ejercicio</label>
+              <div className="relative">
+                <Search
+                  size={14}
+                  className="absolute -translate-y-1/2 left-3 top-1/2 text-muted-foreground"
+                />
+                <input
+                  type="text"
+                  placeholder="Busca un ejercicio…"
+                  value={search}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => search.trim().length > 0 && setShowDropdown(true)}
+                  className="w-full py-2 pl-8 pr-3 text-sm border rounded-xl bg-muted border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                {showDropdown && filtered.length > 0 && (
+                  <ul className="absolute z-10 w-full mt-1 overflow-y-auto border shadow-lg max-h-48 rounded-xl bg-card border-border">
+                    {filtered.map((ex) => (
+                      <li key={ex.id}>
+                        <button
+                          type="button"
+                          onMouseDown={() => handleSelectExercise(ex)}
+                          className="w-full px-3 py-2 text-sm text-left hover:bg-muted text-foreground"
+                        >
+                          {ex.name_es ?? ex.name}
+                          {ex.name_es && (
+                            <span className="ml-1 text-xs text-muted-foreground">({ex.name})</span>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {showDropdown && search.trim().length > 0 && filtered.length === 0 && (
+                  <div className="absolute z-10 w-full px-3 py-2 mt-1 text-sm border rounded-xl bg-card border-border text-muted-foreground">
+                    Sin resultados
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Input kg */}
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">RM (kg)</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                placeholder="100"
+                value={rmKg}
+                onChange={(e) => { setRmKg(e.target.value); setSaveSuccess(false) }}
+                className="w-full px-3 py-2 text-sm border rounded-xl bg-muted border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            {/* Feedback */}
+            {saveError && (
+              <p className="text-xs text-destructive">{saveError}</p>
+            )}
+            {saveSuccess && (
+              <p className="text-xs text-primary">RM guardado correctamente.</p>
+            )}
+
+            <Button
+              variant="default"
+              className="w-full"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Guardando…' : 'Guardar RM'}
+            </Button>
+          </div>
         )}
       </div>
 
