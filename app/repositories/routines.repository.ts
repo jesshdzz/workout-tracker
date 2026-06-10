@@ -58,15 +58,15 @@ export class RoutinesRepository extends BaseRepository {
     const routineIds = data.map(r => r.id)
     const { data: sessions } = await supabase
       .from('sessions')
-      .select('routine_id, date')
+      .select('routine_id, created_at')  // created_at tiene timestamp completo; date solo tiene fecha (causa desfase UTC)
       .in('routine_id', routineIds)
       .eq('completed', true)
-      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
 
     const lastUsedMap = new Map<string, string>()
     for (const s of sessions ?? []) {
       if (s.routine_id && !lastUsedMap.has(s.routine_id)) {
-        lastUsedMap.set(s.routine_id, s.date)
+        lastUsedMap.set(s.routine_id, s.created_at ?? '')
       }
     }
 
