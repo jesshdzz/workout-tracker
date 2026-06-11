@@ -14,6 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_program_states: {
+        Row: {
+          applied_corrections: import('./database.types').Json | null
+          block_allow_techniques: boolean | null
+          block_intensity_pct: number | null
+          block_rep_max: number | null
+          block_rep_min: number | null
+          block_rir_max: number | null
+          block_rir_min: number | null
+          block_target_sets: number | null
+          created_at: string | null
+          current_block: string | null
+          current_week: number | null
+          detected_deficiencies: import('./database.types').Json | null
+          id: string
+          is_active: boolean | null
+          last_analysis_week: number | null
+          mesocycle_start_date: string | null
+          rm_test_sessions_done: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_corrections?: import('./database.types').Json | null
+          block_allow_techniques?: boolean | null
+          block_intensity_pct?: number | null
+          block_rep_max?: number | null
+          block_rep_min?: number | null
+          block_rir_max?: number | null
+          block_rir_min?: number | null
+          block_target_sets?: number | null
+          created_at?: string | null
+          current_block?: string | null
+          current_week?: number | null
+          detected_deficiencies?: import('./database.types').Json | null
+          id?: string
+          is_active?: boolean | null
+          last_analysis_week?: number | null
+          mesocycle_start_date?: string | null
+          rm_test_sessions_done?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_corrections?: import('./database.types').Json | null
+          block_allow_techniques?: boolean | null
+          block_intensity_pct?: number | null
+          block_rep_max?: number | null
+          block_rep_min?: number | null
+          block_rir_max?: number | null
+          block_rir_min?: number | null
+          block_target_sets?: number | null
+          created_at?: string | null
+          current_block?: string | null
+          current_week?: number | null
+          detected_deficiencies?: import('./database.types').Json | null
+          id?: string
+          is_active?: boolean | null
+          last_analysis_week?: number | null
+          mesocycle_start_date?: string | null
+          rm_test_sessions_done?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_program_states_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_checkins: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          id: string
+          motor_action: string | null
+          muscle_soreness: number | null
+          session_id: string | null
+          sleep_hours: number | null
+          stress_level: number | null
+          user_id: string
+          volume_multiplier: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          motor_action?: string | null
+          muscle_soreness?: number | null
+          session_id?: string | null
+          sleep_hours?: number | null
+          stress_level?: number | null
+          user_id: string
+          volume_multiplier?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string | null
+          id?: string
+          motor_action?: string | null
+          muscle_soreness?: number | null
+          session_id?: string | null
+          sleep_hours?: number | null
+          stress_level?: number | null
+          user_id?: string
+          volume_multiplier?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_checkins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_checkins_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercise_muscles: {
         Row: {
           exercise_id: string | null
@@ -521,6 +649,137 @@ export type Database = {
             foreignKeyName: "user_program_state_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_session_feedback: {
+        Row: {
+          cardio_completed: boolean | null
+          cardio_duration_min: number | null
+          cardio_incline_pct: number | null
+          cardio_speed_kmh: number | null
+          created_at: string | null
+          excessive_fatigue_flag: boolean | null
+          id: string
+          notes: string | null
+          perceived_difficulty: string | null
+          perceived_progress: string | null
+          rpe_global: number | null
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          cardio_completed?: boolean | null
+          cardio_duration_min?: number | null
+          cardio_incline_pct?: number | null
+          cardio_speed_kmh?: number | null
+          created_at?: string | null
+          excessive_fatigue_flag?: boolean | null
+          id?: string
+          notes?: string | null
+          perceived_difficulty?: string | null
+          perceived_progress?: string | null
+          rpe_global?: number | null
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          cardio_completed?: boolean | null
+          cardio_duration_min?: number | null
+          cardio_incline_pct?: number | null
+          cardio_speed_kmh?: number | null
+          created_at?: string | null
+          excessive_fatigue_flag?: boolean | null
+          id?: string
+          notes?: string | null
+          perceived_difficulty?: string | null
+          perceived_progress?: string | null
+          rpe_global?: number | null
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_session_feedback_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_session_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_metrics: {
+        Row: {
+          avg_sleep_hours: number | null
+          body_fat_pct: number | null
+          created_at: string | null
+          daily_protein_g: number | null
+          diet_status: string | null
+          experience_years: number | null
+          goals: import('./database.types').Json | null
+          height_cm: number | null
+          hydration_liters: number | null
+          id: string
+          priority_muscles: string[] | null
+          somatotype: string | null
+          supplementation: import('./database.types').Json | null
+          user_id: string
+          weak_muscles: string[] | null
+          weight_kg: number | null
+          weight_unit: string | null
+        }
+        Insert: {
+          avg_sleep_hours?: number | null
+          body_fat_pct?: number | null
+          created_at?: string | null
+          daily_protein_g?: number | null
+          diet_status?: string | null
+          experience_years?: number | null
+          goals?: import('./database.types').Json | null
+          height_cm?: number | null
+          hydration_liters?: number | null
+          id?: string
+          priority_muscles?: string[] | null
+          somatotype?: string | null
+          supplementation?: import('./database.types').Json | null
+          user_id: string
+          weak_muscles?: string[] | null
+          weight_kg?: number | null
+          weight_unit?: string | null
+        }
+        Update: {
+          avg_sleep_hours?: number | null
+          body_fat_pct?: number | null
+          created_at?: string | null
+          daily_protein_g?: number | null
+          diet_status?: string | null
+          experience_years?: number | null
+          goals?: import('./database.types').Json | null
+          height_cm?: number | null
+          hydration_liters?: number | null
+          id?: string
+          priority_muscles?: string[] | null
+          somatotype?: string | null
+          supplementation?: import('./database.types').Json | null
+          user_id?: string
+          weak_muscles?: string[] | null
+          weight_kg?: number | null
+          weight_unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
