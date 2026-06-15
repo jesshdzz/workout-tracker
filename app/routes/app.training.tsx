@@ -6,11 +6,14 @@ import { exercisesRepository } from '~/repositories/exercises.repository'
 import { routinesRepository } from '~/repositories/routines.repository'
 import { useRoutines } from '~/features/routines/hooks/useRoutines'
 import { useActiveSession } from '~/features/training/hooks/useActiveSession'
+import { useSessionLoop } from '~/features/training/hooks/useSessionLoop'
 import { useSessionStore } from '~/features/training/store/session.store'
 import { RoutineCard } from '~/features/routines/components/RoutineCard'
 import { RenameModal } from '~/features/routines/components/RenameModal'
 import { DeleteRoutineModal } from '~/features/routines/components/DeleteRoutineModal'
 import { RoutineBuilder } from '~/features/routines/components/RoutineBuilder'
+import { PreFlightCheckin } from '~/features/training/components/PreFlightCheckin'
+import { AIMotorBanner } from '~/features/training/components/AIMotorBanner'
 import { Button } from '~/components/ui/button'
 import { Plus, Zap } from 'lucide-react'
 import type { Database } from '~/core/types/database.types'
@@ -49,6 +52,10 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const [modal, setModal] = useState<Modal>(null)
     const [previewRoutine, setPreviewRoutine] = useState<RoutineWithExercises | null>(null)
 
+    // Loop de sesión: gestiona pre-flight check-in → sesión → feedback
+    const loop = useSessionLoop()
+    // Pendiente: acción de inicio (quick start o con rutina) a ejecutar tras el check-in
+    const [pendingStartAction, setPendingStartAction] = useState<(() => Promise<void>) | null>(null)
 
     useEffect(() => {
         if (searchParams.get('createRoutine') === '1') {
@@ -62,19 +69,25 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
 
     const handleQuickStart = async () => {
         if (sessionId) { goToActiveSession(); return }
-        await startSession({ name: `Entreno ${new Date().toLocaleDateString('es-ES')}` })
-        navigate('/app/training/active')
+        // Mostrar check-in antes de iniciar
+        setPendingStartAction(() => async () => {
+            const session = await startSession({ name: `Entreno ${new Date().toLocaleDateString('es-ES')}` })
+            if (session) navigate('/app/training/active')
+        })
+        loop.requestStart()
     }
 
     const handleStartRoutine = async (routine: RoutineWithExercises) => {
         if (sessionId) { goToActiveSession(); return }
 
-        const session = await startSession({
-            routineId: routine.id,
-            name: routine.name,
-        })
+        // Mostrar check-in antes de iniciar con rutina
+        setPendingStartAction(() => async () => {
+            const session = await startSession({
+                routineId: routine.id,
+                name: routine.name,
+            })
 
-        if (!session) return
+            if (!session) return
 
         // Carga los ejercicios de la rutina en el store
         const { addExerciseToSession } = useSessionStore.getState()
@@ -119,7 +132,9 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
             }
         })
 
-        navigate('/app/training/active')
+            navigate('/app/training/active')
+        })
+        loop.requestStart()
     }
 
     const handleSaveRoutine = async (
@@ -244,6 +259,26 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     return (
         <div className="max-w-lg min-h-screen px-4 py-6 pb-24 mx-auto space-y-6 bg-background">
 
+            {/* Check-in pre-entreno */}
+            {loop.loopState === 'preflight' && (
+                <PreFlightCheckin
+                    onSubmit={async (checkin) => {
+                        await loop.submitCheckin(checkin)
+                        if (pendingStartAction) {
+                            await pendingStartAction()
+                            setPendingStartAction(null)
+                        }
+                    }}
+                    onSkip={async () => {
+                        loop.skipCheckin()
+                        if (pendingStartAction) {
+                            await pendingStartAction()
+                            setPendingStartAction(null)
+                        }
+                    }}
+                />
+            )}
+
             {/* Modales */}
             {modal?.type === 'rename' && (
                 <RenameModal
@@ -270,6 +305,9 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
             <div>
                 <h1 className="text-2xl font-bold text-foreground">Entrenar</h1>
             </div>
+
+            {/* Motor IA — bloque/semana actual y alertas */}
+            <AIMotorBanner />
 
             {/* Sesión activa — si existe */}
             {sessionId && (
