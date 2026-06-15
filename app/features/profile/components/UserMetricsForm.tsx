@@ -2,8 +2,8 @@
 import { useState } from 'react'
 import { Button } from '~/components/ui/button'
 import {
-  Brain, Moon, Droplets, Utensils, Dumbbell,
-  ChevronDown, ChevronUp, CheckCircle2, Scale, Target, Zap,
+  Brain, Moon, Dumbbell,
+  ChevronDown, ChevronUp, CheckCircle2, Scale, Target, Zap, BicepsFlexed, Flame, TriangleAlert,
 } from 'lucide-react'
 import { useUserMetrics } from '../hooks/useUserMetrics'
 import type { UserGoals } from '~/repositories/user-metrics.repository'
@@ -11,42 +11,42 @@ import { cn } from '~/lib/utils'
 
 // ── Catálogo de músculos (slugs y etiquetas en español)
 const MUSCLE_LIST = [
-  { id: 'biceps',           label: 'Bíceps' },
-  { id: 'triceps',          label: 'Tríceps' },
-  { id: 'forearms',         label: 'Antebrazos' },
-  { id: 'rear_deltoid',     label: 'Deltoides posterior' },
-  { id: 'lateral_deltoid',  label: 'Deltoides lateral' },
-  { id: 'front_deltoid',    label: 'Deltoides anterior' },
-  { id: 'upper_chest',      label: 'Pectoral superior' },
-  { id: 'lower_chest',      label: 'Pectoral inferior' },
-  { id: 'lats',             label: 'Dorsales' },
-  { id: 'traps',            label: 'Trapecios' },
-  { id: 'calves',           label: 'Pantorrillas' },
-  { id: 'quads',            label: 'Cuádriceps' },
-  { id: 'hamstrings',       label: 'Isquiosurales' },
-  { id: 'glutes',           label: 'Glúteos' },
-  { id: 'abs',              label: 'Abdominales' },
+  { id: 'biceps', label: 'Bíceps' },
+  { id: 'triceps', label: 'Tríceps' },
+  { id: 'forearms', label: 'Antebrazos' },
+  { id: 'rear_deltoid', label: 'Deltoides posterior' },
+  { id: 'lateral_deltoid', label: 'Deltoides lateral' },
+  { id: 'front_deltoid', label: 'Deltoides anterior' },
+  { id: 'upper_chest', label: 'Pectoral superior' },
+  { id: 'lower_chest', label: 'Pectoral inferior' },
+  { id: 'lats', label: 'Dorsales' },
+  { id: 'traps', label: 'Trapecios' },
+  { id: 'calves', label: 'Pantorrillas' },
+  { id: 'quads', label: 'Cuádriceps' },
+  { id: 'hamstrings', label: 'Isquiosurales' },
+  { id: 'glutes', label: 'Glúteos' },
+  { id: 'abs', label: 'Abdominales' },
 ]
 
 const SOMATOTYPES = [
-  { value: 'ectomorph',  label: 'Ectomorfo',   desc: 'Delgado, metabolismo rápido, difícil ganar masa' },
-  { value: 'ecto-meso',  label: 'Ecto-Meso',   desc: 'Delgado con tendencia atlética' },
-  { value: 'mesomorph',  label: 'Mesomorfo',   desc: 'Atlético, gana músculo y pierde grasa con facilidad' },
-  { value: 'endo-meso',  label: 'Endo-Meso',   desc: 'Tendencia a ganar músculo y grasa' },
-  { value: 'endomorph',  label: 'Endomorfo',   desc: 'Tendencia a acumular grasa, recuperación lenta' },
+  { value: 'ectomorph', label: 'Ectomorfo', desc: 'Delgado, metabolismo rápido, difícil ganar masa' },
+  { value: 'ecto-meso', label: 'Ecto-Meso', desc: 'Delgado con tendencia atlética' },
+  { value: 'mesomorph', label: 'Mesomorfo', desc: 'Atlético, gana músculo y pierde grasa con facilidad' },
+  { value: 'endo-meso', label: 'Endo-Meso', desc: 'Tendencia a ganar músculo y grasa' },
+  { value: 'endomorph', label: 'Endomorfo', desc: 'Tendencia a acumular grasa, recuperación lenta' },
 ]
 
 const DIET_OPTIONS = [
-  { value: 'surplus',     label: 'Superávit',     desc: '+300-500 kcal sobre mantenimiento' },
+  { value: 'surplus', label: 'Superávit', desc: '+300-500 kcal sobre mantenimiento' },
   { value: 'maintenance', label: 'Mantenimiento', desc: 'Calorías iguales al gasto diario' },
-  { value: 'deficit',     label: 'Déficit',       desc: '-300-500 kcal bajo mantenimiento' },
+  { value: 'deficit', label: 'Déficit', desc: '-300-500 kcal bajo mantenimiento' },
 ]
 
-const GOAL_OPTIONS: { key: keyof UserGoals; label: string; icon: string }[] = [
-  { key: 'build_muscle',       label: 'Ganar músculo',          icon: '💪' },
-  { key: 'lose_fat',           label: 'Perder grasa',           icon: '🔥' },
-  { key: 'increase_strength',  label: 'Aumentar fuerza',        icon: '⚡' },
-  { key: 'maintain_bf_range',  label: 'Mantener % grasa',       icon: '⚖️' },
+const GOAL_OPTIONS: { key: keyof UserGoals; label: string; icon: React.ReactNode }[] = [
+  { key: 'build_muscle', label: 'Ganar músculo', icon: <BicepsFlexed width={16} height={16} /> },
+  { key: 'lose_fat', label: 'Perder grasa', icon: <Flame width={16} height={16} /> },
+  { key: 'increase_strength', label: 'Aumentar fuerza', icon: <Zap width={16} height={16} /> },
+  { key: 'maintain_bf_range', label: 'Mantener % grasa', icon: <Scale width={16} height={16} /> },
 ]
 
 // ── Subcomponent: section header
@@ -133,7 +133,7 @@ export function UserMetricsForm() {
             <p className="text-sm font-semibold text-foreground">Perfil del Atleta</p>
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            El Motor IA usa estos datos para personalizar tu programa
+            La app usa estos datos para personalizar tu programa
           </p>
         </div>
         {isComplete && (
@@ -170,9 +170,15 @@ export function UserMetricsForm() {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          ⚠️ El Motor IA usa esto para calcular incrementos mínimos viables al subir peso (ej. mínimo 1.25 kg o 2.5 lb)
-        </p>
+        <div className="flex gap-3 mt-2 text-amber-500/80">
+          <div className="flex items-center">
+            <TriangleAlert width={16} height={16} />
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            La app usa esto para calcular incrementos mínimos viables al subir peso (ej. mínimo 1.25 kg o 2.5 lb)
+          </p>
+
+        </div>
       </div>
 
       {/* ── Sección: Medidas corporales */}
@@ -256,7 +262,7 @@ export function UserMetricsForm() {
                     : 'bg-muted border-border hover:border-primary/20',
                 )}
               >
-                <span className="text-base">{icon}</span>
+                <div className="p-1 text-amber-500">{icon}</div>
                 <span className={cn('text-xs font-medium', active ? 'text-primary' : 'text-muted-foreground')}>
                   {label}
                 </span>
@@ -368,20 +374,20 @@ export function UserMetricsForm() {
       {/* ── Botón guardar */}
       <Button
         onClick={saveMetrics}
-        disabled={saving}
+        disabled={saving || !isComplete}
         className="w-full"
         variant={saved ? 'outline' : 'default'}
       >
         {saving
           ? 'Guardando...'
           : saved
-            ? '✓ Guardado — Motor IA actualizado'
+            ? '✓ Guardado — App actualizada'
             : 'Guardar perfil del atleta'}
       </Button>
 
       {!isComplete && (
         <p className="text-[11px] text-center text-amber-500/80">
-          Completa al menos: peso, altura, somatotipo y estado calórico para que el Motor IA funcione correctamente.
+          Completa al menos: peso, altura, somatotipo y estado calórico para que la App funcione correctamente.
         </p>
       )}
     </div>
