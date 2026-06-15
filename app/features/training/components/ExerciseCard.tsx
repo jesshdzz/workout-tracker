@@ -101,7 +101,6 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
       const res = await progressionService.getRecommendation(
         user.id,
         exercise.id,
-        weekNumber,
         !!exercise.is_compound
       )
       if (res.data) {
