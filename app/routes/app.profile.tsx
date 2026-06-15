@@ -3,6 +3,7 @@ import { requireAuth } from '~/lib/auth'
 import { useProfile } from '~/features/profile/hooks/useProfile'
 import { ProfileForm } from '~/features/profile/components/ProfileForm'
 import { RMSettings } from '~/features/profile/components/RMSettings'
+import { UserMetricsForm } from '~/features/profile/components/UserMetricsForm'
 import { AppModeSelector } from '~/features/onboarding/components/AppModeSelector'
 import { Button } from '~/components/ui/button'
 import { LogOut } from 'lucide-react'
@@ -49,6 +50,7 @@ export default function ProfileRoute() {
                 </div>
             )}
 
+            {/* Datos básicos de cuenta */}
             {profile && (
                 <ProfileForm
                     profile={profile}
@@ -56,6 +58,9 @@ export default function ProfileRoute() {
                     onSave={updateProfile}
                 />
             )}
+
+            {/* Perfil avanzado del atleta — alimenta al Motor IA */}
+            <UserMetricsForm />
 
             <AppModeSelector />
 
