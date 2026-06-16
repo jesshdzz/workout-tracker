@@ -143,14 +143,20 @@ export function useRMTest() {
 
     // Guardar en personal_rms (upsert por user_id + exercise_id)
     const results = await Promise.all(
-      validEntries.map(e =>
-        rmsRepository.upsert({
+      validEntries.map(e => {
+        const weight = e.bodyweightOnly
+          ? parseFloat(e.bodyweightKg ?? '0')
+          : parseFloat(e.weightUsed)
+        const reps = parseFloat(e.repsCompleted)
+        return rmsRepository.upsert({
           user_id: user.id,
           exercise_id: e.exerciseId!,
           rm_kg: e.calculatedRM!,
           tested_at: new Date().toISOString().split('T')[0],
+          tested_weight: isNaN(weight) ? null : weight,
+          tested_reps: isNaN(reps) ? null : reps,
         })
-      )
+      })
     )
 
     const hasError = results.some(r => r.error)

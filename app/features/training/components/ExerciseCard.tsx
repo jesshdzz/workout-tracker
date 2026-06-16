@@ -11,7 +11,9 @@ import type { Database } from '~/core/types/database.types'
 import type { WeightUnit } from '~/core/types/common.types'
 import { useAuth } from '~/features/auth/AuthProvider'
 import { progressionService } from '~/services/progression.service'
+import { AIPrescriptionPanel } from './AIPrescriptionPanel'
 import { SetRow } from './SetRow'
+import type { ExercisePrescription } from '~/services/ai-trainer.service'
 
 type Exercise = Database['public']['Tables']['exercises']['Row']
 type Technique = 'normal' | 'rest_pause' | 'drop_set' | 'failure'
@@ -32,7 +34,8 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
   const [expanded, setExpanded] = useState(true)
   const [showHistory, setShowHistory] = useState(false)
   const [showRemove, setShowRemove] = useState(false)
-  const [recommendation, setRecommendation] = useState<any | null>(null)
+  const [prescription, setPrescription] = useState<ExercisePrescription | null>(null)
+  const [weightApplied, setWeightApplied] = useState(false)
 
   const completedSets = setsForExercise(exercise.id)
 
@@ -94,21 +97,54 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
     }
   }, [completedSets.length, storePendingSets, exercise.id, history, setPendingSets])
 
-  // Carga la recomendación de progresión inteligente
+  // Carga la prescripción del Motor IA para este ejercicio
   useEffect(() => {
-    if (!user || !exercise.id || !weekNumber) return
+    if (!user || !exercise.id) return
     const loadRec = async () => {
       const res = await progressionService.getRecommendation(
         user.id,
         exercise.id,
-        !!exercise.is_compound
+        !!exercise.is_compound,
+        weightUnit
       )
       if (res.data) {
-        setRecommendation(res.data)
+        // Construir una ExercisePrescription mínima desde la respuesta del servicio
+        // para alimentar al panel (generateWarmupSets se llama en el servicio completo,
+        // aquí usamos los datos básicos disponibles)
+        const { kgToLb } = await import('~/core/utils/epley')
+        const { generateWarmupSets } = await import('~/services/ai-trainer.service')
+        const numWarmups: 2 | 3 = res.data.isDeload ? 2 : 2
+        const warmups = res.data.targetWeightKg > 0
+          ? generateWarmupSets(res.data.targetWeightKg, weightUnit, numWarmups)
+          : []
+        const [repMin, repMax] = res.data.repRange.split('-').map(Number)
+        const rirStr = res.data.rir.replace('RIR ', '')
+        const [rirMin, rirMax] = rirStr.includes('-')
+          ? rirStr.split('-').map(Number)
+          : [parseInt(rirStr), parseInt(rirStr)]
+
+        setPrescription({
+          exerciseId: exercise.id,
+          exerciseName: exercise.name_es ?? exercise.name,
+          isCompound: !!exercise.is_compound,
+          warmupSets: warmups,
+          targetSets: res.data.setsCount,
+          targetRepsMin: repMin ?? 8,
+          targetRepsMax: repMax ?? 12,
+          suggestedWeightKg: res.data.targetWeightKg,
+          suggestedWeightLb: Math.round(kgToLb(res.data.targetWeightKg) / 2.5) * 2.5,
+          displayWeight: res.data.displayWeight,
+          targetRIRMin: rirMin ?? 2,
+          targetRIRMax: rirMax ?? 3,
+          allowRestPause: res.data.allowRestPause,
+          allowDropset: res.data.allowDropset,
+          prioritized: false,
+          note: null,
+        })
       }
     }
     loadRec()
-  }, [user, exercise.id, weekNumber, exercise.is_compound])
+  }, [user, exercise.id, exercise.is_compound, weightUnit])
 
   const addRow = () => {
     const nextIdx = pendingSets.length
@@ -246,14 +282,28 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
             </div>
           )}
 
-          {/* Recomendación de Progresión */}
-          {recommendation && (
-            <div className="flex gap-2 px-3 py-2 mx-3 mb-2 rounded-lg bg-primary/10 border border-primary/20 text-xs">
-              <span className="font-semibold text-primary">Recomendación (Semana {weekNumber}):</span>
-              <span className="text-foreground">
-                {recommendation.setsCount}×{recommendation.repRange} reps @ {recommendation.targetWeightKg} kg ({recommendation.rir})
-              </span>
-            </div>
+          {/* Panel de prescripción del Motor IA */}
+          {prescription && (
+            <AIPrescriptionPanel
+              prescription={prescription}
+              weightUnit={weightUnit}
+              applied={weightApplied}
+              onApplyWeight={(weight) => {
+                // Pre-llenar la primera serie efectiva pendiente que no tenga peso
+                const firstEmptyIdx = pendingSets.findIndex(
+                  (s, idx) => s.setType === 'effective' && !completedSets[idx] && !s.weight
+                )
+                const targetIdx = firstEmptyIdx >= 0 ? firstEmptyIdx : pendingSets.findIndex(
+                  (s, idx) => s.setType === 'effective' && !completedSets[idx]
+                )
+                if (targetIdx >= 0) {
+                  updatePendingSet(exercise.id, targetIdx, { weight: weight.toString() })
+                  setWeightApplied(true)
+                  // Reset tras 3 segundos para poder aplicar de nuevo
+                  setTimeout(() => setWeightApplied(false), 3000)
+                }
+              }}
+            />
           )}
 
           {/* Historial sesión anterior */}
