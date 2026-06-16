@@ -7,6 +7,7 @@ import { routinesRepository } from '~/repositories/routines.repository'
 import { useRoutines } from '~/features/routines/hooks/useRoutines'
 import { useActiveSession } from '~/features/training/hooks/useActiveSession'
 import { useSessionLoop } from '~/features/training/hooks/useSessionLoop'
+import { useAITrainer } from '~/features/training/hooks/useAITrainer'
 import { useSessionStore } from '~/features/training/store/session.store'
 import { RoutineCard } from '~/features/routines/components/RoutineCard'
 import { RenameModal } from '~/features/routines/components/RenameModal'
@@ -14,6 +15,7 @@ import { DeleteRoutineModal } from '~/features/routines/components/DeleteRoutine
 import { RoutineBuilder } from '~/features/routines/components/RoutineBuilder'
 import { PreFlightCheckin } from '~/features/training/components/PreFlightCheckin'
 import { AIMotorBanner } from '~/features/training/components/AIMotorBanner'
+import { RMTestWizard } from '~/features/training/rm-test/RMTestWizard'
 import { Button } from '~/components/ui/button'
 import { Plus, Zap } from 'lucide-react'
 import type { Database } from '~/core/types/database.types'
@@ -56,6 +58,9 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const loop = useSessionLoop()
     // Pendiente: acción de inicio (quick start o con rutina) a ejecutar tras el check-in
     const [pendingStartAction, setPendingStartAction] = useState<(() => Promise<void>) | null>(null)
+
+    // Motor IA — detecta si el usuario está en fase de test de RMs
+    const { isRMTestPhase, loading: motorLoading, refresh: refreshMotor } = useAITrainer()
 
     useEffect(() => {
         if (searchParams.get('createRoutine') === '1') {
@@ -252,6 +257,18 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                 allExercises={exercises}
                 onSave={handleSaveRoutine}
                 onCancel={() => setModal(null)}
+            />
+        )
+    }
+
+    // Semana 0 — Fase de calibración de RMs
+    // Mostrar el wizard guiado en lugar de la pantalla normal de entrenamiento
+    if (isRMTestPhase && !motorLoading) {
+        return (
+            <RMTestWizard
+                onComplete={() => {
+                    refreshMotor()
+                }}
             />
         )
     }

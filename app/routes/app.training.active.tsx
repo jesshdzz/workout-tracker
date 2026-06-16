@@ -1,19 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { Route } from './+types/app.training'
 import { requireAuth } from '~/lib/auth'
 import { exercisesRepository } from '~/repositories/exercises.repository'
 import { useActiveSession } from '~/features/training/hooks/useActiveSession'
 import { useSessionStore } from '~/features/training/store/session.store'
+import { useSessionLoop } from '~/features/training/hooks/useSessionLoop'
+import { useAITrainer } from '~/features/training/hooks/useAITrainer'
 import { SortableExerciseList } from '~/features/training/components/SortableExerciseList'
 import { ExercisePicker } from '~/features/training/components/ExercisePicker'
 import { RestTimer } from '~/features/training/components/RestTimer'
 import { SessionSummary } from '~/features/training/components/SessionSummary'
 import { FinishSessionModal } from '~/features/training/components/FinishSessionModal'
 import { IncompleteSetsModal } from '~/features/training/components/IncompleteSetsModal'
+import { PostSessionFeedbackModal } from '~/features/training/components/PostSessionFeedbackModal'
 import { Button } from '~/components/ui/button'
-import { Clock, Play, Square, Dumbbell, Plus, ArrowLeft } from 'lucide-react'
+import { Clock, Square, Dumbbell, Plus } from 'lucide-react'
 import { formatDuration } from '~/core/utils/formatters'
-import { Link, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import type { Database } from '~/core/types/database.types'
 import { NumericKeyboard } from '~/shared/components/NumericKeyboard'
 import { useNumericKeyboard } from '~/shared/hooks/useNumericKeyboard'
@@ -48,6 +51,10 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
         sessionExercises, addExerciseToSession, reorderExercises, removeExerciseFromSession
     } = useSessionStore()
 
+    // Feedback + cardio post-sesión
+    const loop = useSessionLoop()
+    const { prescription } = useAITrainer()
+
     const [started, setStarted] = useState(!!sessionId)
     const [starting, setStarting] = useState(false)
     const [showConfirmModal, setShowConfirmModal] = useState(false)
@@ -56,6 +63,7 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     const [showIncompleteModal, setShowIncompleteModal] = useState(false)
     const [inputName, setInputName] = useState('')
     const [currentRoutine, setCurrentRoutine] = useState<RoutineWithExercises | null>(null)
+    const [pendingNavigateTo, setPendingNavigateTo] = useState<string>('/app')
 
     useEffect(() => {
         if (!routineId) {
@@ -99,52 +107,32 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
         setShowSummary(true)
     }
 
-    const handleSaveWithRoutine = async () => {
-        await finishSession()
+    /**
+     * Guarda la sesión y muestra el modal de feedback antes de navegar.
+     * navigateTo permite que cada botón de guardado defina su destino.
+     */
+    const saveAndRequestFeedback = useCallback(async (navigateTo: string, extraWork?: () => Promise<void>) => {
+        const result = await finishSession()
+        if (extraWork) await extraWork()
+        // El sessionId viene del store antes del reset
+        const sid = sessionId
         reset()
-        // setShowSummary(false)
-        // setStarted(false)
-        navigate('/app/training?createRoutine=1', { replace: true })
-    }
-
-    const handleSaveOnly = async () => {
-        await finishSession()
-        reset()
-        navigate('/app', { replace: true })
-    }
-
-    const handleSaveAsTemplate = async () => {
-        await finishSession()
-        reset()
-        navigate('/app/training?createRoutine=1', { replace: true })
-    }
-
-    const handleSaveKeepRoutine = async () => {
-        await finishSession()  // guarda historial, no toca la rutina
-        reset()
-        navigate('/app', { replace: true })
-    }
-
-    const handleSaveUpdateValues = async () => {
-        await finishSession()
-        // Actualiza los pesos de referencia en routine_exercises
-        // basado en los sets realizados (último peso/reps por ejercicio)
-        if (routineId && currentRoutine) {
-            const lastSetByExercise = new Map<string, { weight: number; reps: number }>()
-            sets.filter(s => s.setType === 'effective').forEach(s => {
-                lastSetByExercise.set(s.exerciseId, { weight: s.weight, reps: s.reps })
-            })
-            // Por ahora solo guardamos el historial — la actualización de valores
-            // de referencia en rutinas es una mejora futura
+        if (sid) {
+            setPendingNavigateTo(navigateTo)
+            loop.requestFeedback(sid)
+        } else {
+            navigate(navigateTo, { replace: true })
         }
-        reset()
-        navigate('/app', { replace: true })
-    }
+    }, [finishSession, sessionId, reset, loop, navigate])
 
-    const handleSaveUpdateRoutine = async () => {
-        await finishSession()
+    const handleSaveWithRoutine = () => saveAndRequestFeedback('/app/training?createRoutine=1')
+    const handleSaveOnly = () => saveAndRequestFeedback('/app')
+    const handleSaveAsTemplate = () => saveAndRequestFeedback('/app/training?createRoutine=1')
+    const handleSaveKeepRoutine = () => saveAndRequestFeedback('/app')
+    const handleSaveUpdateValues = () => saveAndRequestFeedback('/app')
+
+    const handleSaveUpdateRoutine = () => saveAndRequestFeedback('/app', async () => {
         if (routineId) {
-            // Sincroniza los ejercicios de la sesión con la rutina
             await routinesRepository.syncExercises(
                 routineId,
                 sessionExercises.map((ex, i) => ({
@@ -157,14 +145,10 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                 }))
             )
         }
-        reset()
-        navigate('/app', { replace: true })
-    }
+    })
 
     const handleDiscard = async () => {
         const result = await discardSession()
-        // Solo limpiamos el store si el descarte fue exitoso.
-        // Si falla, el sessionId queda en store para poder reintentar.
         if (result?.error) {
             console.error('Error al descartar la sesión:', result.error.message)
             return
@@ -227,6 +211,24 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     //         </div>
     //     )
     // }
+
+    // Modal de feedback post-sesión (aparece después de guardar, antes de navegar)
+    if (loop.loopState === 'postfeedback' && loop.savedSessionId) {
+        return (
+            <PostSessionFeedbackModal
+                sessionId={loop.savedSessionId}
+                cardioPrescribed={prescription?.cardioPostSession ?? null}
+                onSave={async (payload) => {
+                    await loop.submitFeedback(payload)
+                    navigate(pendingNavigateTo, { replace: true })
+                }}
+                onSkip={() => {
+                    loop.skipFeedback()
+                    navigate(pendingNavigateTo, { replace: true })
+                }}
+            />
+        )
+    }
 
     // Sesión activa
     return (
