@@ -9,24 +9,25 @@ type Props = {
   index: number
   setNumber: number
   weightUnit: WeightUnit
-  
+  canBeWarmup?: boolean  // Bug 1: false si hay series efectivas anteriores
+
   // Si está completado
   completedSet?: ActiveSet | null
-  
+
   // Si está pendiente
   pendingSet?: PendingSet | null
-  
+
   // Callbacks para teclados numéricos
   onTapWeight: () => void
   onTapReps: () => void
   onTapRpReps: () => void
   onTapDropWeight: () => void
   onTapDropReps: () => void
-  
+
   onComplete: () => void
   onDelete: () => void
   onUpdate: (updates: Partial<PendingSet>) => void
-  
+
   prevLabel: string | null
 }
 
@@ -34,6 +35,7 @@ export function SetRow({
   index,
   setNumber,
   weightUnit,
+  canBeWarmup = true,
   completedSet,
   pendingSet,
   onTapWeight,
@@ -190,28 +192,33 @@ export function SetRow({
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Tipo de serie</span>
               <div className="flex overflow-hidden text-xs border rounded-lg border-border">
-                {(['warmup', 'effective'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                    onUpdate(
-                      t === 'warmup'
-                        // Al cambiar a calentamiento, resetear técnica y sus datos
-                        // (las series de calentamiento no usan técnicas avanzadas)
-                        ? { setType: t, technique: 'normal', restPauseReps: '', dropWeight: '', dropReps: '' }
-                        : { setType: t }
-                    )
-                  }}
-                    className={`px-3 py-1 font-medium transition-colors ${
-                      setType === t
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {t === 'warmup' ? 'Calent.' : 'Efectiva'}
-                  </button>
-                ))}
+                {(['warmup', 'effective'] as const).map((t) => {
+                  const isWarmupDisabled = t === 'warmup' && !canBeWarmup
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      disabled={isWarmupDisabled}
+                      onClick={() => {
+                        if (isWarmupDisabled) return
+                        onUpdate(
+                          t === 'warmup'
+                            ? { setType: t, technique: 'normal', restPauseReps: '', dropWeight: '', dropReps: '' }
+                            : { setType: t }
+                        )
+                      }}
+                      className={`px-3 py-1 font-medium transition-colors ${
+                        setType === t
+                          ? 'bg-primary text-primary-foreground'
+                          : isWarmupDisabled
+                            ? 'bg-card text-muted-foreground/40 cursor-not-allowed'
+                            : 'bg-card text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {t === 'warmup' ? 'Calent.' : 'Efectiva'}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
