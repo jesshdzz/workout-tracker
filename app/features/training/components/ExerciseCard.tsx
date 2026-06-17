@@ -11,6 +11,7 @@ import type { Database } from '~/core/types/database.types'
 import type { WeightUnit } from '~/core/types/common.types'
 import { useAuth } from '~/features/auth/AuthProvider'
 import { progressionService } from '~/services/progression.service'
+import { useAITrainer } from '../hooks/useAITrainer'
 import { AIPrescriptionPanel } from './AIPrescriptionPanel'
 import { SetRow } from './SetRow'
 import type { ExercisePrescription } from '~/services/ai-trainer.service'
@@ -26,6 +27,7 @@ type Props = {
 
 export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
   const { user } = useAuth()
+  const { usePeriodization } = useAITrainer()
   const { logSet, setsForExercise, deleteSetFromStore, updateSetInStore } = useActiveSession()
   const { sessionId, sessionExercises, weekNumber } = useSessionStore()
   const { history, loading: loadingHistory } = useExerciseHistory(exercise.id, sessionId)
@@ -290,8 +292,8 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
             </div>
           )}
 
-          {/* Panel de prescripción del Motor IA */}
-          {prescription && (
+          {/* Panel de prescripción — solo si la periodización está activa */}
+          {usePeriodization && prescription && (
             <AIPrescriptionPanel
               prescription={prescription}
               weightUnit={weightUnit}
