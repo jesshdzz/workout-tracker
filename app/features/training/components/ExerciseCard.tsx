@@ -73,9 +73,14 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
     }
   }, [loadingHistory, history, exercise.id, storePendingSets, targetSets, completedSets.length, setPendingSets])
 
-  // Expande automáticamente el array de series pendientes si el número de series completadas crece
+  // Expande automáticamente el array de series pendientes si el número de series completadas crece,
+  // pero SOLO si aún no se han completado todas las series efectivas objetivo.
   useEffect(() => {
-    if (storePendingSets && completedSets.length + 1 > storePendingSets.length) {
+    if (!storePendingSets) return
+    const effectiveCompleted = completedSets.filter(s => s.setType === 'effective').length
+    // No añadir fila extra si ya se completaron todas las series objetivo
+    if (effectiveCompleted >= targetSets) return
+    if (completedSets.length + 1 > storePendingSets.length) {
       const diff = completedSets.length + 1 - storePendingSets.length
       const updated = [...storePendingSets]
       for (let i = 0; i < diff; i++) {
@@ -95,7 +100,7 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
       }
       setPendingSets(exercise.id, updated)
     }
-  }, [completedSets.length, storePendingSets, exercise.id, history, setPendingSets])
+  }, [completedSets.length, storePendingSets, exercise.id, history, setPendingSets, targetSets])
 
   // Carga la prescripción del Motor IA para este ejercicio
   useEffect(() => {
@@ -165,6 +170,9 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
   const handleComplete = async (rowIndex: number) => {
     const pending = pendingSets[rowIndex]
     if (!pending.weight || !pending.reps) return
+    // Mejora 3: mínimo 1 rep
+    const repsNum = parseInt(pending.reps)
+    if (isNaN(repsNum) || repsNum < 1) return
 
     const effectiveCount = completedSets.filter(
       (s, i) => s.setType === 'effective' && i < rowIndex
@@ -178,7 +186,7 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
       technique: pending.technique,
       weight: parseFloat(pending.weight),
       weightUnit,
-      reps: parseInt(pending.reps),
+      reps: repsNum,
       rirPerceived: pending.technique === 'failure' ? 0 : pending.rir,
       restAfterSeconds: pending.restAfterSeconds ?? 90,
       restPauseReps: pending.technique === 'rest_pause' && pending.restPauseReps ? parseInt(pending.restPauseReps) : undefined,
@@ -351,11 +359,17 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
               <div className="divide-y divide-border/50">
                 {pendingSets.map((pending, i) => {
                   const completed = completedSets[i]
-                  
+
                   const effectiveIndex = completedSets
                     .slice(0, i)
-                    .filter(s => s.setType === 'effective').length + 
+                    .filter(s => s.setType === 'effective').length +
                     (pending.setType === 'effective' ? 1 : 0);
+
+                  // Bug 1: un calentamiento solo puede aparecer antes de cualquier serie efectiva
+                  const hasEffectiveBefore = pendingSets
+                    .slice(0, i)
+                    .some(s => s.setType === 'effective')
+                  const canBeWarmup = !hasEffectiveBefore
 
                   return (
                     <SetRow
@@ -365,6 +379,7 @@ export function ExerciseCard({ exercise, weightUnit, onRemove }: Props) {
                       weightUnit={weightUnit}
                       completedSet={completed}
                       pendingSet={completed ? null : pending}
+                      canBeWarmup={canBeWarmup}
                       onTapWeight={() => keyboard.openKeyboard({
                         key: `weight-${exercise.id}-${i}`,
                         value: completed ? (completed.weight?.toString() ?? '') : (pending.weight ?? ''),
