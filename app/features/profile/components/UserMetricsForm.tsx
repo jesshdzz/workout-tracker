@@ -4,6 +4,7 @@ import { Button } from '~/components/ui/button'
 import {
   Brain, Moon, Dumbbell,
   ChevronDown, ChevronUp, CheckCircle2, Scale, Target, Zap, BicepsFlexed, Flame, TriangleAlert,
+  ToggleLeft, ToggleRight, CalendarDays,
 } from 'lucide-react'
 import { useUserMetrics } from '../hooks/useUserMetrics'
 import type { UserGoals } from '~/repositories/user-metrics.repository'
@@ -371,6 +372,41 @@ export function UserMetricsForm() {
         )}
       </div>
 
+      {/* ── Sección: Plan de periodización */}
+      <div className="border border-border rounded-xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => updateField('use_periodization', !form.use_periodization)}
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+        >
+          <div className="p-1.5 rounded-lg bg-primary/10 shrink-0">
+            <CalendarDays size={14} className="text-primary" />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-foreground">Plan de periodización</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {form.use_periodization
+                ? 'Activo — la app guía tus pesos, check-ins y progresión semana a semana'
+                : 'Desactivado — llevas tu propio registro sin guía de progresión'}
+            </p>
+          </div>
+          {form.use_periodization
+            ? <ToggleRight size={28} className="text-primary shrink-0" />
+            : <ToggleLeft size={28} className="text-muted-foreground shrink-0" />
+          }
+        </button>
+
+        {!form.use_periodization && (
+          <div className="flex items-start gap-2 px-4 py-3 border-t border-border bg-amber-400/5">
+            <TriangleAlert size={13} className="text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground">
+              Sin periodización, no aparecerán sugerencias de peso, check-in pre-entreno
+              ni análisis de progresión. Podrás reactivarla en cualquier momento.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* ── Botón guardar */}
       <Button
         onClick={saveMetrics}
@@ -381,7 +417,7 @@ export function UserMetricsForm() {
         {saving
           ? 'Guardando...'
           : saved
-            ? '✓ Guardado — App actualizada'
+            ? '✓ Guardado'
             : 'Guardar perfil del atleta'}
       </Button>
 
