@@ -2,11 +2,11 @@
 //
 // Modal de check-in pre-entreno — aparece al iniciar la primera sesión del día.
 // 10 segundos de interacción: sueño, estrés percibido, dolor muscular.
-// El Motor IA usa estos datos para ajustar el volumen y las técnicas de la sesión.
+// La app usa estos datos para ajustar el volumen y las técnicas de la sesión.
 
 import { useState } from 'react'
 import { Button } from '~/components/ui/button'
-import { Moon, Zap, Dumbbell, X } from 'lucide-react'
+import { Moon, Zap, Dumbbell, X, AlertTriangle, CheckCircle2, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import type { CheckinInput } from '~/services/ai-trainer.service'
 
@@ -14,8 +14,6 @@ type Props = {
   onSubmit: (checkin: CheckinInput) => void
   onSkip: () => void
 }
-
-type SliderField = 'sleep_hours' | 'stress_level' | 'muscle_soreness'
 
 const SLEEP_OPTIONS = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9]
 
@@ -51,9 +49,12 @@ function SleepSelector({
         ))}
       </div>
       {value < 6 && (
-        <p className="text-[11px] text-amber-500">
-          ⚠️ Menos de 6h. El motor reducirá el volumen de hoy para proteger tu recuperación.
-        </p>
+        <div className="flex items-start gap-1.5">
+          <AlertTriangle size={12} className="text-destructive mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Menos de 6h. La app reducirá el volumen de hoy para proteger tu recuperación.
+          </p>
+        </div>
       )}
     </div>
   )
@@ -62,7 +63,6 @@ function SleepSelector({
 function ScaleSelector({
   value,
   onChange,
-  labels,
   colorFn,
 }: {
   value: number
@@ -91,59 +91,60 @@ function ScaleSelector({
   )
 }
 
+// Escala semáforo usando variables del tema
 function stressColor(v: number): string {
   const colors: Record<number, string> = {
-    1: 'bg-emerald-500',
-    2: 'bg-green-500',
-    3: 'bg-amber-500',
-    4: 'bg-orange-500',
-    5: 'bg-red-500',
+    1: 'bg-accent',
+    2: 'bg-accent/80',
+    3: 'bg-secondary',
+    4: 'bg-destructive/70',
+    5: 'bg-destructive',
   }
   return colors[v] ?? 'bg-primary'
 }
 
 function sorenessColor(v: number): string {
-  const colors: Record<number, string> = {
-    1: 'bg-emerald-500',
-    2: 'bg-green-500',
-    3: 'bg-amber-500',
-    4: 'bg-orange-500',
-    5: 'bg-red-500',
-  }
-  return colors[v] ?? 'bg-primary'
+  return stressColor(v)
 }
 
 const STRESS_LABELS: [string, string] = ['Sin estrés', 'Muy estresado']
 const SORENESS_LABELS: [string, string] = ['Sin dolor', 'Muy adolorido']
 
-// Describe el impacto al usuario según la combinación de valores
-function getMotorPreview(sleep: number, stress: number, soreness: number): {
+// Describe el impacto según la combinación de valores
+type SessionPreview = {
   label: string
-  color: string
+  icon: React.ReactNode
+  colorClass: string
   description: string
-} {
+}
+
+function getSessionPreview(sleep: number, stress: number, soreness: number): SessionPreview {
   const score = Math.min(50, (sleep / 8) * 50)
     + ((5 - stress) / 4) * 25
     + ((5 - soreness) / 4) * 25
 
   if (score < 40) return {
     label: 'Sesión de técnica',
-    color: 'text-red-500',
+    icon: <TrendingDown size={13} />,
+    colorClass: 'text-destructive',
     description: 'Series reducidas a la mitad. Sin técnicas avanzadas.',
   }
   if (score < 55) return {
     label: 'Volumen reducido',
-    color: 'text-amber-500',
+    icon: <Minus size={13} />,
+    colorClass: 'text-muted-foreground',
     description: '−1 serie en compuestos. Sin Rest-Pause ni Drop-Set.',
   }
   if (score < 70) return {
     label: 'Sin técnicas avanzadas',
-    color: 'text-yellow-500',
+    icon: <Minus size={13} />,
+    colorClass: 'text-secondary',
     description: 'Volumen completo. Sin Rest-Pause ni Drop-Set hoy.',
   }
   return {
-    label: 'Sesión completa ✓',
-    color: 'text-emerald-500',
+    label: 'Sesión completa',
+    icon: <CheckCircle2 size={13} />,
+    colorClass: 'text-accent',
     description: 'Recuperación óptima. Sesión completa con todas las técnicas.',
   }
 }
@@ -153,7 +154,7 @@ export function PreFlightCheckin({ onSubmit, onSkip }: Props) {
   const [stress, setStress] = useState(2)
   const [soreness, setSoreness] = useState(2)
 
-  const preview = getMotorPreview(sleep, stress, soreness)
+  const preview = getSessionPreview(sleep, stress, soreness)
 
   const handleSubmit = () => {
     onSubmit({
@@ -173,7 +174,7 @@ export function PreFlightCheckin({ onSubmit, onSkip }: Props) {
             <div>
               <h2 className="text-base font-bold text-foreground">¿Cómo te sientes hoy?</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                El Motor IA ajustará tu sesión automáticamente
+                La app ajustará tu sesión automáticamente
               </p>
             </div>
             <button
@@ -198,7 +199,7 @@ export function PreFlightCheckin({ onSubmit, onSkip }: Props) {
             <div className="flex items-center gap-2">
               <Zap size={14} className="text-primary" />
               <p className="text-xs font-medium text-foreground">Nivel de estrés</p>
-              <div className="ml-auto flex gap-2 text-[10px] text-muted-foreground">
+              <div className="ml-auto flex gap-2 text-xs text-muted-foreground">
                 <span>1 = ninguno</span>
                 <span>5 = máximo</span>
               </div>
@@ -216,7 +217,7 @@ export function PreFlightCheckin({ onSubmit, onSkip }: Props) {
             <div className="flex items-center gap-2">
               <Dumbbell size={14} className="text-primary" />
               <p className="text-xs font-medium text-foreground">Dolor / agujetas muscular</p>
-              <div className="ml-auto flex gap-2 text-[10px] text-muted-foreground">
+              <div className="ml-auto flex gap-2 text-xs text-muted-foreground">
                 <span>1 = ninguno</span>
                 <span>5 = mucho</span>
               </div>
@@ -229,14 +230,14 @@ export function PreFlightCheckin({ onSubmit, onSkip }: Props) {
             />
           </div>
 
-          {/* Preview del motor */}
+          {/* Preview de la sesión */}
           <div className="px-3 py-2.5 rounded-xl bg-muted border border-border">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-              <p className="text-xs text-muted-foreground">Motor IA → </p>
-              <p className={cn('text-xs font-semibold', preview.color)}>{preview.label}</p>
+              <div className={cn('shrink-0', preview.colorClass)}>{preview.icon}</div>
+              <p className="text-xs text-muted-foreground">La app sugiere →</p>
+              <p className={cn('text-xs font-semibold', preview.colorClass)}>{preview.label}</p>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{preview.description}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{preview.description}</p>
           </div>
         </div>
 
