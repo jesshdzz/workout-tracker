@@ -733,6 +733,7 @@ export type Database = {
           somatotype: string | null
           supplementation: import('./database.types').Json | null
           user_id: string
+          use_periodization: boolean
           weak_muscles: string[] | null
           weight_kg: number | null
           weight_unit: string | null
@@ -752,6 +753,7 @@ export type Database = {
           somatotype?: string | null
           supplementation?: import('./database.types').Json | null
           user_id: string
+          use_periodization?: boolean
           weak_muscles?: string[] | null
           weight_kg?: number | null
           weight_unit?: string | null
@@ -771,6 +773,7 @@ export type Database = {
           somatotype?: string | null
           supplementation?: import('./database.types').Json | null
           user_id?: string
+          use_periodization?: boolean
           weak_muscles?: string[] | null
           weight_kg?: number | null
           weight_unit?: string | null

@@ -24,6 +24,7 @@ export type MetricsForm = {
   goals: UserGoals
   weak_muscles: string[]
   priority_muscles: string[]
+  use_periodization: boolean
 }
 
 const EMPTY_FORM: MetricsForm = {
@@ -40,6 +41,7 @@ const EMPTY_FORM: MetricsForm = {
   goals: {},
   weak_muscles: [],
   priority_muscles: [],
+  use_periodization: true,
 }
 
 function metricsToForm(m: UserMetrics): MetricsForm {
@@ -57,6 +59,7 @@ function metricsToForm(m: UserMetrics): MetricsForm {
     goals: (m.goals as UserGoals) ?? {},
     weak_muscles: m.weak_muscles ?? [],
     priority_muscles: m.priority_muscles ?? [],
+    use_periodization: m.use_periodization ?? true,
   }
 }
 
@@ -125,6 +128,7 @@ export function useUserMetrics() {
       goals: form.goals,
       weak_muscles: form.weak_muscles,
       priority_muscles: form.priority_muscles,
+      use_periodization: form.use_periodization,
     }
 
     let result
@@ -139,10 +143,12 @@ export function useUserMetrics() {
     } else if (result.data) {
       setMetrics(result.data)
 
-      // Si no existe un estado del programa → inicializar Motor IA (Semana 0)
-      const stateRes = await aiProgramStatesRepository.findByUser(user.id)
-      if (!stateRes.data) {
-        await aiProgramStatesRepository.initialize(user.id)
+      // Solo inicializar el programa si el usuario quiere periodización
+      if (form.use_periodization) {
+        const stateRes = await aiProgramStatesRepository.findByUser(user.id)
+        if (!stateRes.data) {
+          await aiProgramStatesRepository.initialize(user.id)
+        }
       }
 
       setSaved(true)
