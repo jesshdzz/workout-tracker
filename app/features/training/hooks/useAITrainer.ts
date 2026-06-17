@@ -69,6 +69,7 @@ export type AITrainerState = {
   isDeload: boolean
   isRMTestPhase: boolean
   programInitialized: boolean
+  usePeriodization: boolean    // false → ocultar toda la UI de plan/periodización
 
   // Alertas del análisis semanal
   weeklyAlerts: string[]
@@ -194,8 +195,9 @@ export function useAITrainer(): AITrainerState {
     if (res.data) setProgramState(res.data)
   }, [user])
 
-  const block       = programState?.current_block ?? 'rm_testing'
-  const currentWeek = programState?.current_week ?? 0
+  const block          = programState?.current_block ?? 'rm_testing'
+  const currentWeek    = programState?.current_week ?? 0
+  const usePeriodization = userMetrics?.use_periodization ?? true
 
   return {
     programState,
@@ -208,8 +210,10 @@ export function useAITrainer(): AITrainerState {
     currentBlock: block,
     blockLabel: BLOCK_LABELS[block] ?? block,
     isDeload: block === 'deload',
-    isRMTestPhase: block === 'rm_testing' || currentWeek === 0,
+    // Si el usuario no quiere periodización, nunca mostrar el wizard ni el plan
+    isRMTestPhase: usePeriodization && (block === 'rm_testing' || currentWeek === 0),
     programInitialized: !!programState,
+    usePeriodization,
     weeklyAlerts,
     generatePrescription,
     advanceWeek,

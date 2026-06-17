@@ -59,8 +59,8 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     // Pendiente: acción de inicio (quick start o con rutina) a ejecutar tras el check-in
     const [pendingStartAction, setPendingStartAction] = useState<(() => Promise<void>) | null>(null)
 
-    // Motor IA — detecta si el usuario está en fase de test de RMs
-    const { isRMTestPhase, loading: motorLoading, refresh: refreshMotor } = useAITrainer()
+    // Datos del plan — detecta fase de RMs y si la periodización está activa
+    const { isRMTestPhase, usePeriodization, loading: motorLoading, refresh: refreshMotor } = useAITrainer()
 
     useEffect(() => {
         if (searchParams.get('createRoutine') === '1') {
@@ -74,12 +74,18 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
 
     const handleQuickStart = async () => {
         if (sessionId) { goToActiveSession(); return }
-        // Mostrar check-in antes de iniciar
-        setPendingStartAction(() => async () => {
-            const session = await startSession({ name: `Entreno ${new Date().toLocaleDateString('es-ES')}` })
-            if (session) navigate('/app/training/active')
-        })
-        loop.requestStart()
+        if (usePeriodization) {
+            // Con periodización: mostrar check-in antes de iniciar
+            setPendingStartAction(() => async () => {
+                const session = await startSession({ name: `Entreno ${new Date().toLocaleDateString('es-ES')}` })
+                if (session) navigate('/app/training/active')
+            })
+            loop.requestStart()
+        } else {
+            // Sin periodización: inicio directo
+            await startSession({ name: `Entreno ${new Date().toLocaleDateString('es-ES')}` })
+            navigate('/app/training/active')
+        }
     }
 
     const handleStartRoutine = async (routine: RoutineWithExercises) => {
@@ -139,7 +145,14 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
 
             navigate('/app/training/active')
         })
-        loop.requestStart()
+        if (usePeriodization) {
+            loop.requestStart()
+        } else {
+            // Sin periodización: ejecutar inmediatamente sin check-in
+            const action = pendingStartAction
+            setPendingStartAction(null)
+            if (action) await action()
+        }
     }
 
     const handleSaveRoutine = async (
@@ -276,8 +289,8 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     return (
         <div className="max-w-lg min-h-screen px-4 py-6 pb-24 mx-auto space-y-6 bg-background">
 
-            {/* Check-in pre-entreno */}
-            {loop.loopState === 'preflight' && (
+            {/* Check-in pre-entreno — solo si la periodización está activa */}
+            {usePeriodization && loop.loopState === 'preflight' && (
                 <PreFlightCheckin
                     onSubmit={async (checkin) => {
                         await loop.submitCheckin(checkin)
@@ -323,8 +336,8 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
                 <h1 className="text-2xl font-bold text-foreground">Entrenar</h1>
             </div>
 
-            {/* Motor IA — bloque/semana actual y alertas */}
-            <AIMotorBanner />
+            {/* Plan semanal — solo si la periodización está activa */}
+            {usePeriodization && <AIMotorBanner />}
 
             {/* Sesión activa — si existe */}
             {sessionId && (
