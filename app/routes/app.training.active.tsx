@@ -89,11 +89,22 @@ export default function TrainingRoute({ loaderData }: Route.ComponentProps) {
     }
 
     const handleFinishPress = () => {
-        // Contar series con datos ingresados pero sin marcar (pendingSets con weight y reps)
-        const pendingSetsAll = Object.values(
-            useSessionStore.getState().pendingSets
-        ).flat()
-        const incompleteFilled = pendingSetsAll.filter(s => s.weight && s.reps).length
+        // Contar SOLO series que tienen datos ingresados pero NO fueron marcadas como completadas.
+        // Las pendingSets retienen sus valores incluso después de ser completadas,
+        // por eso hay que cruzar con sets completadas por ejercicio+índice.
+        const storeState = useSessionStore.getState()
+        const completedSetIds = new Set(sets.map(s => s.exerciseId + '-' + s.setNumber))
+
+        let incompleteFilled = 0
+        for (const [exerciseId, pendingList] of Object.entries(storeState.pendingSets)) {
+            const exerciseCompleted = sets.filter(s => s.exerciseId === exerciseId)
+            pendingList.forEach((pending, idx) => {
+                const alreadyLogged = idx < exerciseCompleted.length
+                if (!alreadyLogged && pending.weight && pending.reps) {
+                    incompleteFilled++
+                }
+            })
+        }
 
         if (incompleteFilled > 0) {
             setShowIncompleteModal(true)
