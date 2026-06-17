@@ -2,10 +2,8 @@
 // Pantalla completa que aparece la primera vez que el usuario accede al entrenamiento
 // después de completar su perfil de atleta.
 //
-// Flujo: Intro → Sesión 1 (Upper) → Between → Sesión 2 (Lower) → Resumen → Done
-
 import { useState } from 'react'
-import { Brain, ChevronRight, ChevronLeft, Zap, AlertTriangle, Check, Lock, TrendingUp, Weight } from 'lucide-react'
+import { Brain, ChevronRight, Zap, AlertTriangle, Check, TrendingUp, Weight, ClipboardList, Hash, Target, Moon, Utensils, Droplets, BedDouble, Info } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { cn } from '~/lib/utils'
 import { calcWorkingWeight } from '~/core/utils/epley'
@@ -16,46 +14,50 @@ import { useRMTest, type RMEntry } from './useRMTest'
 // Sub-componente: pantalla de introducción
 // ─────────────────────────────────────────────────────────────────────────────
 function IntroScreen({ onStart }: { onStart: () => void }) {
+  const items = [
+    {
+      icon: <ClipboardList size={16} className="text-primary" />,
+      title: '2 sesiones de calibración',
+      desc: 'Sesión 1: tren superior. Sesión 2: tren inferior.',
+    },
+    {
+      icon: <Hash size={16} className="text-primary" />,
+      title: 'Registra peso + repeticiones',
+      desc: 'La app calcula tu 1RM estimado automáticamente con la fórmula de Epley.',
+    },
+    {
+      icon: <Target size={16} className="text-primary" />,
+      title: 'Pesos exactos desde el Día 1',
+      desc: 'Con tus RMs, la app sabrá exactamente cuánto peso usar cada semana.',
+    },
+    {
+      icon: <Zap size={16} className="text-primary" />,
+      title: 'No es un test de máximos',
+      desc: 'No llegas al fallo. Elige un peso con el que puedas hacer 6–15 reps con buena técnica.',
+    },
+  ]
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 text-center bg-background">
       <div className="w-full max-w-sm space-y-6">
-        <div className="flex items-center justify-center w-20 h-20 mx-auto rounded-3xl bg-primary/10">
+        <div className="flex items-center justify-center w-20 h-20 mx-auto rounded-2xl bg-primary/10">
           <Brain size={36} className="text-primary" />
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">Calibración de tu fuerza</h1>
+          <h1 className="text-2xl font-bold text-foreground">Calibración inicial</h1>
           <p className="text-sm text-muted-foreground">
             Antes de comenzar las 16 semanas, la app necesita conocer tu fuerza base real.
           </p>
         </div>
 
         <div className="space-y-3 text-left">
-          {[
-            {
-              icon: '📋',
-              title: '2 sesiones de calibración',
-              desc: 'Sesión 1: tren superior (Upper). Sesión 2: tren inferior (Lower).',
-            },
-            {
-              icon: '🔢',
-              title: 'Registra peso + repeticiones',
-              desc: 'La app calcula tu 1RM estimado automáticamente con la fórmula de Epley.',
-            },
-            {
-              icon: '🎯',
-              title: 'Prescripciones exactas desde el Día 1',
-              desc: 'Con tus RMs, la app sabrá exactamente cuánto peso usar cada semana.',
-            },
-            {
-              icon: '⚡',
-              title: 'No es un test de máximos',
-              desc: 'No llegas al fallo. Elige un peso con el que puedas hacer 6-15 reps con buena técnica.',
-            },
-          ].map(item => (
+          {items.map(item => (
             <div key={item.title} className="flex items-start gap-3 px-4 py-3 border rounded-xl bg-muted border-border">
-              <span className="text-xl leading-none mt-0.5">{item.icon}</span>
-              <div>
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 shrink-0">
+                {item.icon}
+              </div>
+              <div className="flex-1">
                 <p className="text-sm font-semibold text-foreground">{item.title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{item.desc}</p>
               </div>
@@ -63,9 +65,10 @@ function IntroScreen({ onStart }: { onStart: () => void }) {
           ))}
         </div>
 
-        <div className="px-4 py-3 border rounded-xl bg-amber-400/10 border-amber-400/20">
-          <p className="text-xs font-medium text-amber-400">
-            💡 Tómate 1-2 días de descanso entre las 2 sesiones para llegar fresco.
+        <div className="flex items-start gap-2 px-4 py-3 border rounded-xl bg-amber-400/10 border-amber-400/20">
+          <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-xs font-medium text-left text-amber-400">
+            Tómate 1–2 días de descanso entre las 2 sesiones para llegar fresco.
           </p>
         </div>
 
@@ -351,10 +354,17 @@ function SessionScreen({
 // Sub-componente: pantalla "between" (entre sesión 1 y 2)
 // ─────────────────────────────────────────────────────────────────────────────
 function BetweenScreen({ onContinue }: { onContinue: () => void }) {
+  const restItems = [
+    { icon: <Moon size={15} className="text-muted-foreground shrink-0" />, text: 'Descansa 1–2 días completos' },
+    { icon: <Utensils size={15} className="text-muted-foreground shrink-0" />, text: 'Asegura buena ingesta proteíca hoy y mañana' },
+    { icon: <Droplets size={15} className="text-muted-foreground shrink-0" />, text: 'Hidratación adecuada (mínimo 2L)' },
+    { icon: <BedDouble size={15} className="text-muted-foreground shrink-0" />, text: 'Duerme al menos 7–8 horas esta noche' },
+  ]
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 text-center bg-background">
       <div className="w-full max-w-sm space-y-6">
-        <div className="flex items-center justify-center w-20 h-20 mx-auto rounded-3xl bg-emerald-500/10">
+        <div className="flex items-center justify-center w-20 h-20 mx-auto rounded-2xl bg-emerald-500/10">
           <Check size={36} className="text-emerald-500" />
         </div>
 
@@ -365,23 +375,20 @@ function BetweenScreen({ onContinue }: { onContinue: () => void }) {
           </p>
         </div>
 
-        <div className="px-4 py-4 space-y-3 text-left border rounded-2xl bg-muted border-border">
+        <div className="px-4 py-4 space-y-3 text-left border rounded-xl bg-muted border-border">
           <p className="text-sm font-semibold text-foreground">Antes de la Sesión 2:</p>
-          {[
-            '🛌 Descansa 1-2 días completos',
-            '🍖 Asegura buena ingesta proteica hoy y mañana',
-            '💧 Hidratación adecuada (mínimo 2L)',
-            '😴 Duerme al menos 7-8 horas esta noche',
-          ].map(item => (
-            <div key={item} className="flex items-center gap-2">
-              <p className="text-sm text-foreground">{item}</p>
+          {restItems.map(item => (
+            <div key={item.text} className="flex items-center gap-2.5">
+              {item.icon}
+              <p className="text-sm text-foreground">{item.text}</p>
             </div>
           ))}
         </div>
 
-        <div className="px-4 py-3 border rounded-xl bg-primary/5 border-primary/20">
-          <p className="text-xs text-primary">
-            La Sesión 2 testea tren inferior. Incluye RDL — no vayas al fallo total en ese ejercicio.
+        <div className="flex items-start gap-2 px-4 py-3 border rounded-xl bg-primary/5 border-primary/20">
+          <Info size={13} className="text-primary shrink-0 mt-0.5" />
+          <p className="text-xs text-left text-primary">
+            La Sesión 2 cubre tren inferior. Incluye RDL — no vayas al fallo total en ese ejercicio.
           </p>
         </div>
 
@@ -409,7 +416,7 @@ function SummaryScreen({ validRMs, onDone }: { validRMs: RMEntry[]; onDone: () =
           <div className="flex items-center justify-center w-16 h-16 mx-auto rounded-3xl bg-primary/10">
             <Zap size={28} className="text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Motor Calibrado</h1>
+          <h1 className="text-2xl font-bold text-foreground">Calibración lista</h1>
           <p className="text-sm text-muted-foreground">
             {validRMs.length} RMs guardados. Aquí están tus pesos para la Semana 1 — Bloque de Acumulación.
           </p>

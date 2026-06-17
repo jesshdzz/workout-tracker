@@ -5,7 +5,7 @@
 // El botón "Usar" pre-llena el campo de peso en la primera serie pendiente.
 
 import { useState } from 'react'
-import { Brain, ChevronDown, ChevronUp, Zap, AlertTriangle, Check } from 'lucide-react'
+import { Brain, ChevronDown, ChevronUp, Zap, AlertTriangle, Check, Star } from 'lucide-react'
 import { cn } from '~/lib/utils'
 import type { ExercisePrescription } from '~/services/ai-trainer.service'
 
@@ -64,11 +64,12 @@ export function AIPrescriptionPanel({ prescription, weightUnit, onApplyWeight, a
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
         <Brain size={13} className="text-primary shrink-0" />
         <p className="text-[11px] font-semibold text-primary uppercase tracking-wide flex-1">
-          Motor IA
+          Tu plan
         </p>
         {prescription.prioritized && (
-          <span className="text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-            ★ Prioridad
+          <span className="flex items-center gap-1 text-[10px] font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+            <Star size={9} />
+            Prioridad
           </span>
         )}
       </div>
